@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "bettersounds",
+  "version": "${version}",
+  "name": "Better Sounds",
+  "description": "Port Better Sounds (Bedrock, oleh MSAB14) ke Java, plus suara saat melempar (drop) item.",
+  "authors": ["MSAB14 (suara asli)"],
+  "icon": "assets/bettersounds/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["bettersounds.BetterSoundsMod"]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "~26.3",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
+}
