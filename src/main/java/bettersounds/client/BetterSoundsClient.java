@@ -22,7 +22,7 @@ public class BetterSoundsClient implements ClientModInitializer {
 		ClientTickEvents.END_CLIENT_TICK.register(mc -> {
 			if (openNext) {
 				openNext = false;
-				mc.setScreen(new ConfigScreen(mc.screen));
+				mc.gui.setScreen(new ConfigScreen(mc.gui.screen()));
 			}
 		});
 	}
