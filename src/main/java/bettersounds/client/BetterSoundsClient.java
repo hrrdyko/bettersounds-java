@@ -1,16 +1,27 @@
 package bettersounds.client;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
+import net.minecraft.client.KeyMapping;
+import net.minecraft.resources.Identifier;
+import org.lwjgl.glfw.GLFW;
 
 public class BetterSoundsClient implements ClientModInitializer {
 	private static boolean openNext = false;
+	private static KeyMapping openKey;
 
 	@Override
 	public void onInitializeClient() {
+		// Keybind (default: K, bisa diubah di Controls)
+		KeyMapping.Category category = KeyMapping.Category.register(Identifier.fromNamespaceAndPath("bettersounds", "main"));
+		openKey = KeyMappingHelper.registerKeyMapping(
+				new KeyMapping("key.bettersounds.open", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_K, category));
+
 		// /bettersounds -> buka layar pengaturan
 		ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) ->
 				dispatcher.register(LiteralArgumentBuilder.<FabricClientCommandSource>literal("bettersounds")
@@ -20,6 +31,9 @@ public class BetterSoundsClient implements ClientModInitializer {
 						})));
 
 		ClientTickEvents.END_CLIENT_TICK.register(mc -> {
+			while (openKey.consumeClick()) {
+				if (mc.gui.screen() == null) openNext = true;
+			}
 			if (openNext) {
 				openNext = false;
 				mc.gui.setScreen(new ConfigScreen(mc.gui.screen()));

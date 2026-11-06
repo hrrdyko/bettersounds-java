@@ -31,6 +31,8 @@ public final class SoundConfig {
 	private static final Path DIR = FabricLoader.getInstance().getConfigDir().resolve("bettersounds");
 	public static final Path LIBRARY_DIR = DIR.resolve("library");
 	private static final Path FILE = DIR.resolve("config.json");
+	/** Pack internal (tidak muncul di daftar resource pack); dipakai lewat mixin. */
+	public static final Path PACK_DIR = DIR.resolve("pack");
 	private static Map<String, List<String>> defaults;
 
 	public static final class Entry {
@@ -121,6 +123,14 @@ public final class SoundConfig {
 			LOGGER.warn("Gagal membaca folder library", e);
 		}
 		return out;
+	}
+
+	public static void removeFromLibrary(String file) {
+		try {
+			Files.deleteIfExists(LIBRARY_DIR.resolve(file));
+		} catch (IOException e) {
+			LOGGER.warn("Gagal menghapus {}", file, e);
+		}
 	}
 
 	/** Nama file harus huruf kecil [a-z0-9._-] agar valid sebagai nama suara Minecraft. */

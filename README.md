@@ -7,12 +7,12 @@ Pack asli: https://www.curseforge.com/minecraft-bedrock/texture-packs/better-sou
 ## Fitur
 - Seluruh suara Better Sounds untuk Java (blok, mob, item, cuaca, dll.).
 - Suara saat melempar (drop) item.
-- Layar pengaturan per suara: ketik `/bettersounds` di game.
+- Layar pengaturan per suara: tekan **K** (bisa diubah di Controls), ketik `/bettersounds`, atau klik tombol config di **Mod Menu**.
   - Volume (0-100%) dan pitch (0.5x-2.0x) tiap suara.
   - Pilihan suara: Default (Better Sounds) atau file .ogg buatanmu sendiri.
   - Impor: drag & drop file .ogg (Vorbis) ke jendela game saat layar pengaturan terbuka
     (atau taruh di `config/bettersounds/library/`).
-  - Klik **Apply** untuk menyimpan, membuat resource pack `BetterSounds-Config`, dan me-reload suara.
+  - Klik **Apply** untuk menyimpan dan me-reload suara. Semuanya tersimpan di `config/bettersounds/` dan dimuat otomatis oleh mod, tanpa resource pack terpisah.
 
 ## Build
 `sounds-assets.zip` diekstrak ke `src/main/resources` (otomatis di GitHub Actions), lalu `gradle build` (JDK 25).

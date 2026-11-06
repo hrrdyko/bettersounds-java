@@ -1,0 +1,11 @@
+{
+  "required": true,
+  "package": "bettersounds.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [
+    "PackRepositoryMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 0
+  }
+}
