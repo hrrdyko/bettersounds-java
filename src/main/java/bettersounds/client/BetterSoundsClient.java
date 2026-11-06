@@ -9,7 +9,6 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.resources.Identifier;
-import org.lwjgl.glfw.GLFW;
 
 public class BetterSoundsClient implements ClientModInitializer {
 	private static boolean openNext = false;
@@ -17,10 +16,10 @@ public class BetterSoundsClient implements ClientModInitializer {
 
 	@Override
 	public void onInitializeClient() {
-		// Keybind (default: K, bisa diubah di Controls)
+		// Keybind (default: K = kode GLFW 75, bisa diubah di Controls)
 		KeyMapping.Category category = KeyMapping.Category.register(Identifier.fromNamespaceAndPath("bettersounds", "main"));
 		openKey = KeyMappingHelper.registerKeyMapping(
-				new KeyMapping("key.bettersounds.open", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_K, category));
+				new KeyMapping("key.bettersounds.open", InputConstants.Type.KEYBOARD, 75, category));
 
 		// /bettersounds -> buka layar pengaturan
 		ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) ->
