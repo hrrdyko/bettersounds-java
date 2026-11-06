@@ -36,7 +36,18 @@ public class BetterSoundsClient implements ClientModInitializer {
 			if (openNext) {
 				openNext = false;
 				mc.gui.setScreen(new ConfigScreen(mc.gui.screen()));
+				releaseMouse(mc);
 			}
 		});
+	}
+
+	/** Memastikan kursor mouse tidak terkunci (lewat refleksi agar tidak bergantung pada nama field). */
+	private static void releaseMouse(net.minecraft.client.Minecraft mc) {
+		try {
+			Object handler = net.minecraft.client.Minecraft.class.getField("mouseHandler").get(mc);
+			handler.getClass().getMethod("releaseMouse").invoke(handler);
+		} catch (Throwable t) {
+			SoundConfig.LOGGER.warn("Tidak bisa melepas kursor mouse", t);
+		}
 	}
 }
