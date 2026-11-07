@@ -57,8 +57,6 @@ public class ConfigScreen extends Screen {
 	private int maxScroll = 0;
 	private Hit dragging = null;
 	private long appliedAt = 0;
-	private String dbg = "no click yet";
-	private int dbgMx = -1, dbgMy = -1;
 
 	// dropdown
 	private String popupKey = null;
@@ -226,13 +224,9 @@ public class ConfigScreen extends Screen {
 		String hint;
 		if (System.currentTimeMillis() - appliedAt < 2500) hint = "Applied!";
 		else if (page == LIBRARY) hint = "Preview works after Apply  |  Drop .ogg files onto this window to import";
-		else hint = "Right-click a slider to reset  |  Click Apply to save and reload sounds";
-		g.text(f, fit(hint, cW - 16 - 150), cX + 8, listBottom + 4,
+		else hint = "Double-click a slider to reset  |  Click Apply to save and reload sounds";
+		g.text(f, fit(hint, cW - 16), cX + 8, listBottom + 4,
 				System.currentTimeMillis() - appliedAt < 2500 ? C_ACCENT : C_MUTED);
-		dbgMx = mouseX;
-		dbgMy = mouseY;
-		String info = "mouse " + dbgMx + "," + dbgMy + " | " + dbg;
-		g.text(f, info, cX + cW - 8 - f.width(info), listBottom + 4, C_MUTED);
 
 		drawPopup(g, mouseX, mouseY);
 		if (popupKey != null && !popAnchorFound) popupKey = null;
@@ -448,8 +442,6 @@ public class ConfigScreen extends Screen {
 	public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
 		double mx = event.x(), my = event.y();
 		int btn = event.button();
-		dbg = String.format(Locale.ROOT, "click %.0f,%.0f b%d hits=%d", mx, my, btn, hits.size());
-		SoundConfig.LOGGER.info("ConfigScreen {}", dbg);
 
 		boolean overSearch = searchBox != null && searchBox.visible && searchBox.isMouseOver(mx, my);
 		if (overSearch) {
@@ -462,13 +454,13 @@ public class ConfigScreen extends Screen {
 			Hit h = hits.get(i);
 			if (!h.contains(mx, my)) continue;
 			if (h.slide != null) {
-				if (btn == 1 && h.reset != null) {
+				if (doubleClick && h.reset != null) {
 					h.reset.run();
-				} else if (btn == 0) {
+				} else if (btn == 0 || btn == 1) {
 					dragging = h;
 					h.slide.accept(mx);
 				}
-			} else if (btn == 0 && h.click != null) {
+			} else if ((btn == 0 || btn == 1) && h.click != null) {
 				h.click.run();
 			}
 			return true;
