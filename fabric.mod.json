@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "id": "bettersounds",
+  "version": "${version}",
+  "name": "Better Sounds",
+  "description": "Port tidak resmi Better Sounds (Bedrock, oleh MSAB14) ke Java, dengan layar pengaturan per suara (tombol K, /bettersounds, atau Mod Menu) dan suara saat melempar item.",
+  "authors": [
+    "MSAB14 (Better Sounds asli, Bedrock)",
+    "endemicsauce (port Java)"
+  ],
+  "icon": "assets/bettersounds/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "bettersounds.BetterSoundsMod"
+    ],
+    "client": [
+      "bettersounds.client.BetterSoundsClient"
+    ],
+    "modmenu": [
+      "bettersounds.client.BetterSoundsModMenu"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "~26.3",
+    "java": ">=25",
+    "fabric-api": "*"
+  },
+  "suggests": {
+    "modmenu": "*"
+  },
+  "mixins": [
+    {
+      "config": "bettersounds.mixins.json",
+      "environment": "client"
+    }
+  ]
+}
