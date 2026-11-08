@@ -9,7 +9,8 @@
     "GuiMixin",
     "ClientPacketListenerMixin",
     "AbstractWidgetMixin",
-    "AbstractSliderButtonMixin"
+    "AbstractSliderButtonMixin",
+    "SoundBufferLibraryMixin"
   ],
   "injectors": {
     "defaultRequire": 0

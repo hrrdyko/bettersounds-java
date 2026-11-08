@@ -11,6 +11,7 @@ base {
 }
 
 repositories {
+	mavenCentral()
 	maven {
 		name = 'Terraformers'
 		url = 'https://maven.terraformersmc.com/'
@@ -29,6 +30,16 @@ dependencies {
 	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
 	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 	// Mod Menu hanya dipakai saat kompilasi (tombol konfigurasi); tidak wajib dipasang pemain
+	// Decoder MP3 (JLayer, LGPL) dibundel sebagai jar-in-jar
+	implementation "com.googlecode.soundlibs:jlayer:1.0.1.4"
+	include "com.googlecode.soundlibs:jlayer:1.0.1.4"
+	// Dialog pilih file/folder (lwjgl-tinyfd) + native per sistem operasi, sebagai jar-in-jar
+	include("org.lwjgl:lwjgl-tinyfd:3.4.3") { transitive = false }
+	include("org.lwjgl:lwjgl-tinyfd:3.4.3:natives-windows") { transitive = false }
+	include("org.lwjgl:lwjgl-tinyfd:3.4.3:natives-windows-arm64") { transitive = false }
+	include("org.lwjgl:lwjgl-tinyfd:3.4.3:natives-linux") { transitive = false }
+	include("org.lwjgl:lwjgl-tinyfd:3.4.3:natives-macos") { transitive = false }
+	include("org.lwjgl:lwjgl-tinyfd:3.4.3:natives-macos-arm64") { transitive = false }
 	compileOnly("com.terraformersmc:modmenu:${project.modmenu_version}") { transitive = false }
 }
 
@@ -36,6 +47,13 @@ processResources {
 	inputs.property "version", project.mod_version
 	filesMatching("fabric.mod.json") {
 		expand "version": project.mod_version
+	}
+	// Daftar suara Better Sounds tidak boleh aktif otomatis (supaya bisa dikembalikan ke suara vanilla per event).
+	// File dipindah ke assets/bettersounds/default_events.json dan dipasang lewat pack konfigurasi.
+	exclude 'assets/minecraft/sounds.json'
+	from('src/main/resources/assets/minecraft/sounds.json') {
+		into 'assets/bettersounds'
+		rename 'sounds.json', 'default_events.json'
 	}
 }
 

@@ -12,11 +12,18 @@ import net.minecraft.resources.Identifier;
 
 public class BetterSoundsClient implements ClientModInitializer {
 	private static boolean openNext = false;
+	private static boolean fallbackChecked = false;
 	private static KeyMapping openKey;
 
 	@Override
 	public void onInitializeClient() {
-		SoundRuntime.rebuild(SoundConfig.load());
+		SoundConfig startCfg = SoundConfig.load();
+		SoundRuntime.rebuild(startCfg);
+		try {
+			PackBuilder.build(startCfg, false); // pack harus sudah ada sebelum resource pertama dimuat
+		} catch (Exception e) {
+			SoundConfig.LOGGER.error("Gagal membuat pack Better Sounds saat start", e);
+		}
 
 		// Keybind (default: K = kode GLFW 75, bisa diubah di Controls)
 		KeyMapping.Category category = KeyMapping.Category.register(Identifier.fromNamespaceAndPath("bettersounds", "main"));
@@ -32,6 +39,14 @@ public class BetterSoundsClient implements ClientModInitializer {
 						})));
 
 		ClientTickEvents.END_CLIENT_TICK.register(mc -> {
+			if (!fallbackChecked) {
+				fallbackChecked = true;
+				// kalau mixin pack tersembunyi tidak aktif, pasang cadangan lewat folder resourcepacks
+				if (!HiddenPack.seen) {
+					SoundConfig.LOGGER.warn("Mixin pack tidak aktif saat start, memakai pack di folder resourcepacks");
+					PackBuilder.fallbackFolderPack(mc);
+				}
+			}
 			while (openKey.consumeClick()) {
 				if (mc.gui.screen() == null) openNext = true;
 			}

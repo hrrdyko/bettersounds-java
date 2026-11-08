@@ -23,9 +23,9 @@ import java.util.TreeMap;
 import java.util.stream.Stream;
 
 /**
- * Membuat resource pack otomatis (resourcepacks/BetterSounds-Config) dari pengaturan,
- * lalu mengaktifkannya dan me-reload suara. Pack ini menimpa suara bawaan mod
- * hanya untuk event yang pengaturannya diubah.
+ * Membuat pack tersembunyi (config/bettersounds/pack) berisi:
+ * suara Better Sounds untuk event yang pilihannya "Default", dan suara Library untuk event yang memilihnya.
+ * Event berpilihan "Vanilla" tidak ditulis sehingga memakai suara asli Minecraft.
  */
 public final class PackBuilder {
 	public static final String PACK_NAME = "BetterSounds-Config";
@@ -34,22 +34,50 @@ public final class PackBuilder {
 	private PackBuilder() {}
 
 	public static void build(SoundConfig cfg) throws IOException {
+		build(cfg, true);
+	}
+
+	/** @param render true = render ulang suara Library (mp3/wav/hasil edit); false = pakai hasil render yang sudah ada. */
+	public static void build(SoundConfig cfg, boolean render) throws IOException {
 		Path root = SoundConfig.PACK_DIR;
 		deleteRecursively(root);
 		Path customDir = root.resolve("assets/minecraft/sounds/bettersounds_custom");
 		Files.createDirectories(customDir);
 
-		List<String> library = SoundConfig.library();
-		for (String f : library) {
-			Files.copy(SoundConfig.LIBRARY_DIR.resolve(f), customDir.resolve(f), StandardCopyOption.REPLACE_EXISTING);
+		SoundConfig.invalidateLibrary();
+		List<String> items = SoundConfig.library();
+		if (render) AudioPipeline.renderLibrary(cfg);
+		for (String rel : SoundConfig.allMembers()) {
+			Path dest = customDir.resolve(SoundConfig.stem(rel) + ".ogg");
+			Files.createDirectories(dest.getParent());
+			if (cfg.needsRender(rel)) copyPlaceholder(dest); // isi sebenarnya disuplai lewat CustomAudio
+			else Files.copy(SoundConfig.LIBRARY_DIR.resolve(rel), dest, StandardCopyOption.REPLACE_EXISTING);
 		}
-		Set<String> lib = new HashSet<>(library);
+		Set<String> libSet = new HashSet<>(items);
 
 		Map<String, JsonObject> byNamespace = new TreeMap<>();
+		JsonObject mc = byNamespace.computeIfAbsent("minecraft", k -> new JsonObject());
+
+		// 1) suara Better Sounds untuk event yang memakai "Default"
+		for (Map.Entry<String, List<String>> d : SoundConfig.betterDefaults().entrySet()) {
+			SoundConfig.Entry e = cfg.entries.get(d.getKey());
+			if (e != null && !"default".equals(e.choice)) continue; // "vanilla" atau suara Library
+			JsonArray arr = new JsonArray();
+			for (String name : d.getValue()) {
+				JsonObject s = new JsonObject();
+				s.addProperty("name", "minecraft:" + name);
+				arr.add(s);
+			}
+			JsonObject ev = new JsonObject();
+			ev.addProperty("replace", true);
+			ev.add("sounds", arr);
+			mc.add(d.getKey(), ev);
+		}
+
+		// 2) suara Library (file tunggal atau grup yang diputar acak)
 		for (Map.Entry<String, SoundConfig.Entry> en : cfg.entries.entrySet()) {
 			SoundConfig.Entry e = en.getValue();
-			// volume/pitch diterapkan saat suara diputar (SoundRuntime); di sini hanya pilihan suara kustom
-			if ("default".equals(e.choice) || !lib.contains(e.choice)) continue;
+			if ("default".equals(e.choice) || "vanilla".equals(e.choice) || !libSet.contains(e.choice)) continue;
 
 			String key = en.getKey();
 			String ns = "minecraft";
@@ -61,25 +89,17 @@ public final class PackBuilder {
 			}
 
 			JsonArray arr = new JsonArray();
-			JsonObject s1 = new JsonObject();
-			s1.addProperty("name", "minecraft:bettersounds_custom/" + e.choice.substring(0, e.choice.length() - 4));
-			arr.add(s1);
+			for (String rel : SoundConfig.members(e.choice)) {
+				JsonObject s1 = new JsonObject();
+				s1.addProperty("name", "minecraft:bettersounds_custom/" + SoundConfig.stem(rel));
+				if (cfg.needsRender(rel)) s1.addProperty("stream", true);
+				arr.add(s1);
+			}
+			if (arr.isEmpty()) continue;
 			JsonObject ev = new JsonObject();
 			ev.addProperty("replace", true);
 			ev.add("sounds", arr);
 			byNamespace.computeIfAbsent(ns, k -> new JsonObject()).add(event, ev);
-		}
-
-		// event pratinjau untuk tiap file library (dipakai tombol Play di layar pengaturan)
-		for (String f : library) {
-			String stem = f.substring(0, f.length() - 4);
-			JsonArray one = new JsonArray();
-			JsonObject so = new JsonObject();
-			so.addProperty("name", "minecraft:bettersounds_custom/" + stem);
-			one.add(so);
-			JsonObject evt = new JsonObject();
-			evt.add("sounds", one);
-			byNamespace.computeIfAbsent("bettersounds", k -> new JsonObject()).add("lib." + stem, evt);
 		}
 
 		for (Map.Entry<String, JsonObject> n : byNamespace.entrySet()) {
@@ -95,6 +115,12 @@ public final class PackBuilder {
 		JsonObject mcmeta = new JsonObject();
 		mcmeta.add("pack", pack);
 		Files.writeString(root.resolve("pack.mcmeta"), GSON.toJson(mcmeta), StandardCharsets.UTF_8);
+	}
+
+	private static void copyPlaceholder(Path dest) throws IOException {
+		Path src = FabricLoader.getInstance().getModContainer("bettersounds").orElseThrow()
+				.findPath("assets/bettersounds/placeholder.ogg").orElseThrow();
+		Files.copy(src, dest, StandardCopyOption.REPLACE_EXISTING);
 	}
 
 	/**
@@ -135,7 +161,7 @@ public final class PackBuilder {
 		}
 	}
 
-	private static void fallbackFolderPack(Minecraft mc) {
+	static void fallbackFolderPack(Minecraft mc) {
 		try {
 			Path dest = folderPackPath();
 			deleteRecursively(dest);

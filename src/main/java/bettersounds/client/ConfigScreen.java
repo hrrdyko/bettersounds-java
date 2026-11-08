@@ -136,7 +136,30 @@ public class ConfigScreen extends Screen {
 	}
 
 	private static String stem(String file) {
-		return file.endsWith(".ogg") ? file.substring(0, file.length() - 4) : file;
+		return SoundConfig.stem(file);
+	}
+
+	private static final String ALL = "*";
+
+	private List<String> choicesFor(String key) {
+		List<String> c = new ArrayList<>();
+		c.add("default");
+		if (key == null || ALL.equals(key) || SoundConfig.hasBetterDefault(key)) c.add("vanilla");
+		c.addAll(SoundConfig.library());
+		return c;
+	}
+
+	private static String choiceLabel(String choice) {
+		if ("default".equals(choice)) return "Default";
+		if ("vanilla".equals(choice)) return "Vanilla";
+		if (SoundConfig.isGroup(choice)) return choice + " (x" + SoundConfig.members(choice).size() + ")";
+		return stem(choice);
+	}
+
+	private boolean validChoice(String key, String choice) {
+		if ("default".equals(choice)) return true;
+		if ("vanilla".equals(choice)) return SoundConfig.hasBetterDefault(key);
+		return SoundConfig.library().contains(choice);
 	}
 
 	private String fit(String s, int maxW) {
@@ -175,7 +198,7 @@ public class ConfigScreen extends Screen {
 		sideW = Math.max(78, Math.min(96, pW / 5));
 		cX = pX + sideW + 1;
 		cW = pW - sideW - 1;
-		listTop = pY + HEAD_H + (page == LIBRARY ? 34 : COL_H);
+		listTop = pY + HEAD_H + (page == LIBRARY ? 36 : COL_H);
 		listBottom = pY + pH - FOOT_H - 1;
 	}
 
@@ -199,6 +222,7 @@ public class ConfigScreen extends Screen {
 	// ---------------- init ----------------
 	@Override
 	protected void init() {
+		SoundConfig.invalidateLibrary();
 		layout();
 		String old = searchBox == null ? "" : searchBox.getValue();
 		int btnTotal = 56 + 3 + 46 + 3 + 18 + 6;
@@ -334,7 +358,7 @@ public class ConfigScreen extends Screen {
 		boolean applied = System.currentTimeMillis() - appliedAt < 2500;
 		String hint;
 		if (applied) hint = "Applied!";
-		else if (page == LIBRARY) hint = "Drop .ogg files onto this window to import  |  Apply to preview";
+		else if (page == LIBRARY) hint = "Drop files, folders or .zip to import  |  Apply to use";
 		else hint = "Double-click a slider to reset  |  Apply to save";
 		g.text(f, fit(hint, cW - 16), cX + 8, listBottom + 4, applied ? C_ACCENT : C_MUTED);
 
@@ -399,6 +423,24 @@ public class ConfigScreen extends Screen {
 		g.text(f, "Pitch", pitX + (sliderW - f.width("Pitch")) / 2, pY + HEAD_H + 3, C_MUTED);
 		g.text(f, "Playback", playX, pY + HEAD_H + 3, C_MUTED);
 
+		// ubah pilihan suara untuk semua baris yang sedang tampil (hasil pencarian)
+		int setW = dropW, setX = dropX, setY = pY + HEAD_H + 1, setH = COL_H - 2;
+		boolean setOpen = ALL.equals(popupKey);
+		boolean setHov = mx >= setX && mx < setX + setW && my >= setY && my < setY + setH;
+		bevel(g, setX, setY, setW, setH, setOpen || setHov ? C_BTN_H : C_BTN, setOpen || setHov ? C_BTN_HI_H : C_BTN_HI, C_BTN_LO, C_OUT);
+		g.text(f, "Set all shown v", setX + (setW - f.width("Set all shown v")) / 2, setY + 2, C_TEXT);
+		hits.add(new Hit(setX, setY, setX + setW, setY + setH, Integer.MIN_VALUE, Integer.MAX_VALUE, () -> {
+			popupKey = ALL.equals(popupKey) ? null : ALL;
+			popupScroll = 0;
+		}, null, null));
+		if (setOpen) {
+			popAx = setX;
+			popAy = setY;
+			popAw = setW;
+			popAh = setH;
+			popAnchorFound = true;
+		}
+
 		List<KeyInfo> keys = visible();
 		int viewH = listBottom - listTop;
 		int contentH = keys.size() * ROW_H;
@@ -406,17 +448,13 @@ public class ConfigScreen extends Screen {
 		scroll = Math.max(0, Math.min(scroll, maxScroll));
 
 		g.enableScissor(cX, listTop, cX + cW, listBottom);
-		List<String> choices = new ArrayList<>();
-		choices.add("default");
-		choices.addAll(SoundConfig.library());
-
 		for (int i = 0; i < keys.size(); i++) {
 			int y = listTop - scroll + i * ROW_H;
 			if (y + ROW_H < listTop || y > listBottom) continue;
 			final KeyInfo info = keys.get(i);
 			final String key = info.key;
 			final SoundConfig.Entry e = cfg.get(key);
-			if (!choices.contains(e.choice)) e.choice = "default";
+			if (!validChoice(key, e.choice)) e.choice = "default";
 
 			g.fill(cX, y, cX + cW - 1, y + ROW_H, i % 2 == 0 ? C_ROW_A : C_ROW_B);
 			g.fill(cX, y, cX + cW - 1, y + 1, C_ROW_HI);
@@ -439,8 +477,7 @@ public class ConfigScreen extends Screen {
 			boolean open = key.equals(popupKey);
 			boolean hov = mx >= dropX && mx < dropX + dropW && my >= Math.max(y + 4, listTop) && my < Math.min(y + 20, listBottom);
 			inset(g, dropX, y + 4, dropW, 16, open || hov ? C_INSET_H : C_INSET);
-			String shown = "default".equals(e.choice) ? "Default" : stem(e.choice);
-			g.text(f, fit(shown, dropW - 16), dropX + 4, y + 8, C_TEXT);
+			g.text(f, fit(choiceLabel(e.choice), dropW - 16), dropX + 4, y + 8, C_TEXT);
 			g.text(f, "v", dropX + dropW - 10, y + 8, open || hov ? C_ACCENT : C_MUTED);
 			hits.add(new Hit(dropX, y + 4, dropX + dropW, y + 20, listTop, listBottom, () -> {
 				popupKey = key.equals(popupKey) ? null : key;
@@ -471,49 +508,73 @@ public class ConfigScreen extends Screen {
 
 	private void drawLibrary(GuiGraphicsExtractor g, int mx, int my) {
 		Font f = this.minecraft.font;
-		List<String> files = SoundConfig.library();
+		List<String> items = SoundConfig.library();
 		int infoY = pY + HEAD_H;
 		g.fill(cX, infoY, cX + cW - 1, listTop, C_SIDE);
 		g.fill(cX, listTop - 1, cX + cW - 1, listTop, 0xFF0D0D0E);
-		g.text(f, fit("Drop .ogg (Vorbis) files onto this window to import them.", cW - 16), cX + 8, infoY + 6, C_TEXT);
-		g.text(f, fit("config/bettersounds/library  |  " + files.size() + " file(s)", cW - 16), cX + 8, infoY + 19, C_MUTED);
+		g.text(f, fit("Import .ogg / .mp3 / .wav, a folder, or a .zip (a group plays random).", cW - 16 - 120), cX + 8, infoY + 7, C_TEXT);
+		g.text(f, fit("config/bettersounds/library  |  " + items.size() + " item(s)", cW - 16 - 120), cX + 8, infoY + 20, C_MUTED);
+		int ibx = cX + cW - 8 - 56;
+		button(g, ibx, infoY + 5, 56, 16, "Folder", mx, my, Integer.MIN_VALUE, Integer.MAX_VALUE, true, () -> {
+			java.nio.file.Path dir = FilePicker.pickFolder();
+			if (dir != null) SoundConfig.importPaths(List.of(dir));
+		});
+		button(g, ibx - 4 - 56, infoY + 5, 56, 16, "Files", mx, my, Integer.MIN_VALUE, Integer.MAX_VALUE, true, true, () -> {
+			List<java.nio.file.Path> picked = FilePicker.pickFiles();
+			if (!picked.isEmpty()) SoundConfig.importPaths(picked);
+		});
 
 		int viewH = listBottom - listTop;
-		int contentH = files.size() * LIB_ROW_H;
+		int contentH = items.size() * LIB_ROW_H;
 		maxScroll = Math.max(0, contentH - viewH);
 		scroll = Math.max(0, Math.min(scroll, maxScroll));
 
 		g.enableScissor(cX, listTop, cX + cW, listBottom);
-		for (int i = 0; i < files.size(); i++) {
+		for (int i = 0; i < items.size(); i++) {
 			int y = listTop - scroll + i * LIB_ROW_H;
 			if (y + LIB_ROW_H < listTop || y > listBottom) continue;
-			final String file = files.get(i);
+			final String item = items.get(i);
+			final boolean group = SoundConfig.isGroup(item);
 			g.fill(cX, y, cX + cW - 1, y + LIB_ROW_H, i % 2 == 0 ? C_ROW_A : C_ROW_B);
 			g.fill(cX, y, cX + cW - 1, y + 1, C_ROW_HI);
 			g.fill(cX, y + LIB_ROW_H - 1, cX + cW - 1, y + LIB_ROW_H, C_ROW_LO);
 			int btnRight = cX + cW - 14;
-			g.text(f, fit(stem(file), cW - 16 - 100), cX + 8, y + 7, C_TEXT);
+			String label;
+			if (group) label = "[Group] " + item + "  (" + SoundConfig.members(item).size() + " sounds)";
+			else label = cfg.edit(item).isDefault() ? item : item + " *";
+			g.text(f, fit(label, cW - 16 - 140), cX + 8, y + 7, C_TEXT);
 			button(g, btnRight - 52, y + 3, 52, 16, "Remove", mx, my, listTop, listBottom, true, () -> {
-				SoundConfig.removeFromLibrary(file);
+				cfg.removeFromLibrary(item);
 				for (SoundConfig.Entry e : cfg.entries.values()) {
-					if (file.equals(e.choice)) e.choice = "default";
+					if (item.equals(e.choice)) e.choice = "default";
 				}
 			});
-			button(g, btnRight - 52 - 4 - 34, y + 3, 34, 16, "Play", mx, my, listTop, listBottom, true,
-					() -> playEvent(Identifier.fromNamespaceAndPath("bettersounds", "lib." + stem(file))));
+			button(g, btnRight - 52 - 4 - 34, y + 3, 34, 16, "Play", mx, my, listTop, listBottom, true, () -> {
+				try {
+					List<String> mem = SoundConfig.members(item);
+					if (mem.isEmpty()) return;
+					String pick = mem.get(java.util.concurrent.ThreadLocalRandom.current().nextInt(mem.size()));
+					AudioPipeline.preview(AudioPipeline.decodeCached(pick), cfg.edit(pick));
+				} catch (Exception ex) {
+					SoundConfig.LOGGER.warn("Gagal memutar {}", item, ex);
+				}
+			});
+			if (!group) {
+				button(g, btnRight - 52 - 4 - 34 - 4 - 34, y + 3, 34, 16, "Edit", mx, my, listTop, listBottom, true,
+						() -> this.minecraft.gui.setScreen(new SoundEditorScreen(this, cfg, item)));
+			}
 		}
 		g.disableScissor();
-		if (files.isEmpty()) g.text(f, "Library is empty. Drop some .ogg files here.", cX + 8, listTop + 8, C_MUTED);
+		if (items.isEmpty()) g.text(f, "Library is empty. Use Files / Folder, or drop files here.", cX + 8, listTop + 8, C_MUTED);
 		drawScrollbar(g, contentH, viewH);
 	}
 
 	private void drawPopup(GuiGraphicsExtractor g, int mx, int my) {
 		if (popupKey == null || !popAnchorFound) return;
 		Font f = this.minecraft.font;
-		final SoundConfig.Entry e = cfg.get(popupKey);
-		List<String> choices = new ArrayList<>();
-		choices.add("default");
-		choices.addAll(SoundConfig.library());
+		final boolean all = ALL.equals(popupKey);
+		final SoundConfig.Entry e = all ? null : cfg.get(popupKey);
+		List<String> choices = choicesFor(popupKey);
 
 		int itemH = 14;
 		int vis = Math.min(choices.size(), 8);
@@ -531,12 +592,19 @@ public class ConfigScreen extends Screen {
 			final String choice = choices.get(popupScroll + i);
 			int iy = y + 1 + i * itemH;
 			boolean hov = mx >= x && mx < x + w && my >= iy && my < iy + itemH;
-			boolean sel = choice.equals(e.choice);
+			boolean sel = e != null && choice.equals(e.choice);
 			if (hov) bevel(g, x, iy, w, itemH, C_BTN_H, C_BTN_HI_H, C_BTN_LO, C_OUT);
 			else if (sel) bevel(g, x, iy, w, itemH, G_FACE, G_HI, G_LO, G_OUT);
-			g.text(f, fit("default".equals(choice) ? "Default" : stem(choice), w - 12), x + 6, iy + 3, C_TEXT);
+			g.text(f, fit(choiceLabel(choice), w - 12), x + 6, iy + 3, C_TEXT);
 			hits.add(new Hit(x, iy, x + w, iy + itemH, Integer.MIN_VALUE, Integer.MAX_VALUE, () -> {
-				e.choice = choice;
+				if (all) {
+					for (KeyInfo ki : filtered) {
+						if ("vanilla".equals(choice) && !SoundConfig.hasBetterDefault(ki.key)) continue;
+						cfg.get(ki.key).choice = choice;
+					}
+				} else {
+					e.choice = choice;
+				}
 				popupKey = null;
 			}, null, null));
 		}
@@ -633,7 +701,7 @@ public class ConfigScreen extends Screen {
 
 	@Override
 	public void onFilesDrop(List<Path> paths) {
-		SoundConfig.importFiles(paths);
+		SoundConfig.importPaths(paths);
 	}
 
 	@Override
