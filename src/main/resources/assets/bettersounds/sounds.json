@@ -1,5 +1,13 @@
 {
-  "item.drop": {
-    "sounds": [ "minecraft:better/random/pop" ]
-  }
+  "item.drop":         { "sounds": [ "minecraft:better/random/pop" ] },
+  "ui.hotbar_scroll":  { "sounds": [ "ui/hotbar_scroll" ] },
+  "ui.slider_scroll":  { "sounds": [ "ui/slider_scroll" ] },
+  "ui.hover":          { "sounds": [ "ui/hover" ] },
+  "ui.gui_open":       { "sounds": [ "ui/gui_open" ] },
+  "ui.gui_close":      { "sounds": [ "ui/gui_close" ] },
+  "ui.inventory_open": { "sounds": [ "ui/inventory_open" ] },
+  "ui.inventory_close":{ "sounds": [ "ui/inventory_close" ] },
+  "ui.chat_open":      { "sounds": [ "ui/chat_open" ] },
+  "ui.chat_close":     { "sounds": [ "ui/chat_close" ] },
+  "ui.world_join":     { "sounds": [ "ui/world_join" ] }
 }

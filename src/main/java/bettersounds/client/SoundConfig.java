@@ -2,10 +2,9 @@ package bettersounds.client;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.sounds.SoundEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,13 +18,14 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.stream.Stream;
 
 /** Pengaturan per suara (volume, pitch, pilihan suara) + pustaka suara buatan pengguna. */
 public final class SoundConfig {
 	public static final Logger LOGGER = LoggerFactory.getLogger("bettersounds");
-	public static final String DROP_KEY = "bettersounds:item.drop";
 
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 	private static final Path DIR = FabricLoader.getInstance().getConfigDir().resolve("bettersounds");
@@ -33,7 +33,7 @@ public final class SoundConfig {
 	private static final Path FILE = DIR.resolve("config.json");
 	/** Pack internal (tidak muncul di daftar resource pack); dipakai lewat mixin. */
 	public static final Path PACK_DIR = DIR.resolve("pack");
-	private static Map<String, List<String>> defaults;
+	private static List<String> allKeys;
 
 	public static final class Entry {
 		public float volume = 1.0f;
@@ -78,33 +78,20 @@ public final class SoundConfig {
 		Files.writeString(FILE, GSON.toJson(out), StandardCharsets.UTF_8);
 	}
 
-	// ---------- daftar suara bawaan (dibaca dari sounds.json di dalam mod) ----------
-	public static synchronized Map<String, List<String>> defaultSounds() {
-		if (defaults != null) return defaults;
-		Map<String, List<String>> m = new TreeMap<>();
+	// ---------- semua event suara di game (vanilla + mod lain) ----------
+	public static synchronized List<String> allKeys() {
+		if (allKeys != null && !allKeys.isEmpty()) return allKeys;
+		Set<String> keys = new TreeSet<>();
 		try {
-			Path p = FabricLoader.getInstance().getModContainer("bettersounds").orElseThrow()
-					.findPath("assets/minecraft/sounds.json").orElseThrow();
-			try (Reader r = Files.newBufferedReader(p, StandardCharsets.UTF_8)) {
-				JsonObject root = JsonParser.parseReader(r).getAsJsonObject();
-				for (Map.Entry<String, JsonElement> e : root.entrySet()) {
-					List<String> names = new ArrayList<>();
-					for (JsonElement s : e.getValue().getAsJsonObject().getAsJsonArray("sounds")) {
-						names.add(s.getAsString());
-					}
-					m.put(e.getKey(), names);
-				}
+			for (SoundEvent se : BuiltInRegistries.SOUND_EVENT) {
+				String s = se.location().toString();
+				keys.add(s.startsWith("minecraft:") ? s.substring("minecraft:".length()) : s);
 			}
 		} catch (Exception e) {
-			LOGGER.error("Gagal membaca daftar suara bawaan", e);
+			LOGGER.error("Gagal membaca daftar event suara", e);
 		}
-		m.put(DROP_KEY, List.of("better/random/pop"));
-		defaults = m;
-		return m;
-	}
-
-	public static List<String> allKeys() {
-		return new ArrayList<>(defaultSounds().keySet());
+		allKeys = new ArrayList<>(keys);
+		return allKeys;
 	}
 
 	// ---------- pustaka suara pengguna ----------

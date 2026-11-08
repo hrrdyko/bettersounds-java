@@ -16,6 +16,8 @@ public class BetterSoundsClient implements ClientModInitializer {
 
 	@Override
 	public void onInitializeClient() {
+		SoundRuntime.rebuild(SoundConfig.load());
+
 		// Keybind (default: K = kode GLFW 75, bisa diubah di Controls)
 		KeyMapping.Category category = KeyMapping.Category.register(Identifier.fromNamespaceAndPath("bettersounds", "main"));
 		openKey = KeyMappingHelper.registerKeyMapping(

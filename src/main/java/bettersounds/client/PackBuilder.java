@@ -48,7 +48,8 @@ public final class PackBuilder {
 		Map<String, JsonObject> byNamespace = new TreeMap<>();
 		for (Map.Entry<String, SoundConfig.Entry> en : cfg.entries.entrySet()) {
 			SoundConfig.Entry e = en.getValue();
-			if (e.isDefault()) continue;
+			// volume/pitch diterapkan saat suara diputar (SoundRuntime); di sini hanya pilihan suara kustom
+			if ("default".equals(e.choice) || !lib.contains(e.choice)) continue;
 
 			String key = en.getKey();
 			String ns = "minecraft";
@@ -59,25 +60,10 @@ public final class PackBuilder {
 				event = key.substring(colon + 1);
 			}
 
-			float volume = Math.max(0f, Math.min(1f, e.volume));
-			float pitch = Math.max(0.5f, Math.min(2f, e.pitch));
-
-			List<String> names = new ArrayList<>();
-			if (!"default".equals(e.choice) && lib.contains(e.choice)) {
-				names.add("bettersounds_custom/" + e.choice.substring(0, e.choice.length() - 4));
-			} else {
-				names.addAll(SoundConfig.defaultSounds().getOrDefault(key, List.of()));
-			}
-			if (names.isEmpty()) continue;
-
 			JsonArray arr = new JsonArray();
-			for (String n : names) {
-				JsonObject s = new JsonObject();
-				s.addProperty("name", n.contains(":") ? n : "minecraft:" + n);
-				s.addProperty("volume", volume);
-				s.addProperty("pitch", pitch);
-				arr.add(s);
-			}
+			JsonObject s1 = new JsonObject();
+			s1.addProperty("name", "minecraft:bettersounds_custom/" + e.choice.substring(0, e.choice.length() - 4));
+			arr.add(s1);
 			JsonObject ev = new JsonObject();
 			ev.addProperty("replace", true);
 			ev.add("sounds", arr);
