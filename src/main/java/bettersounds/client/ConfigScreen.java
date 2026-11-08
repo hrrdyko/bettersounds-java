@@ -22,12 +22,19 @@ public class ConfigScreen extends Screen {
 	private static final String[] PAGES = {"All sounds", "Block", "Entity", "Item", "Other", "Library"};
 	private static final int LIBRARY = 5;
 
-	// warna (ARGB)
-	private static final int C_BG = 0xFF202020, C_SIDE = 0xFF272727, C_HEAD = 0xFF2E2E2E;
-	private static final int C_ROW_A = 0xFF2F2F2F, C_ROW_B = 0xFF363636, C_SEL = 0xFF404040;
-	private static final int C_BTN = 0xFF4C4C4C, C_BTN_H = 0xFF646464, C_BTN_OFF = 0xFF353535;
-	private static final int C_TEXT = 0xFFFFFFFF, C_MUTED = 0xFFA8A8A8, C_ACCENT = 0xFFE8672A;
-	private static final int C_TRACK = 0xFF151515, C_LINE = 0xFF141414;
+	// palet (ARGB) - gaya piksel bevel ala Bedrock, aksen hijau
+	private static final int C_OUT = 0xFF000000;
+	private static final int C_BG = 0xFF2A2A2B, C_BG_HI = 0xFF4B4C4E, C_BG_LO = 0xFF161617;
+	private static final int C_SIDE = 0xFF212122, C_HEAD = 0xFF323334;
+	private static final int C_ROW_A = 0xFF2D2D2E, C_ROW_B = 0xFF343435, C_ROW_HI = 0xFF3F4041, C_ROW_LO = 0xFF222223;
+	private static final int C_BTN = 0xFF4D4E50, C_BTN_HI = 0xFF7D7E81, C_BTN_LO = 0xFF2E2F30;
+	private static final int C_BTN_H = 0xFF5F6063, C_BTN_HI_H = 0xFF909194;
+	private static final int C_OFF = 0xFF353536, C_OFF_HI = 0xFF414243, C_OFF_LO = 0xFF2A2A2B;
+	private static final int C_INSET = 0xFF121213, C_INSET_H = 0xFF1C1C1E, C_INSET_DK = 0xFF040404, C_INSET_LT = 0xFF3E3F41;
+	private static final int G_FACE = 0xFF3C8527, G_HI = 0xFF72C24D, G_LO = 0xFF22501A, G_OUT = 0xFF0E2A0A;
+	private static final int G_FACE_H = 0xFF4A9A31;
+	private static final int C_TEXT = 0xFFFFFFFF, C_MUTED = 0xFFA8A8A8, C_ACCENT = 0xFF5DBB3D;
+	private static final int C_HANDLE = 0xFFC8C9CB, C_HANDLE_HI = 0xFFF4F5F6, C_HANDLE_LO = 0xFF77787A;
 
 	private static final int ROW_H = 26, LIB_ROW_H = 24, HEAD_H = 28, COL_H = 16, FOOT_H = 16;
 
@@ -66,6 +73,7 @@ public class ConfigScreen extends Screen {
 
 	// layout
 	private int pX, pY, pW, pH, sideW, cX, cW, listTop, listBottom;
+	private int curMx = -1, curMy = -1;
 
 	public ConfigScreen(Screen parent) {
 		super(Component.literal("Better Sounds"));
@@ -157,12 +165,45 @@ public class ConfigScreen extends Screen {
 		this.addRenderableWidget(searchBox);
 	}
 
+	// ---------------- helper gambar (bevel 1 piksel) ----------------
+	private void bevel(GuiGraphicsExtractor g, int x, int y, int w, int h, int face, int hi, int lo, int outline) {
+		g.fill(x, y, x + w, y + h, outline);
+		g.fill(x + 1, y + 1, x + w - 1, y + h - 1, face);
+		g.fill(x + 1, y + 1, x + w - 1, y + 2, hi);
+		g.fill(x + 1, y + 1, x + 2, y + h - 1, hi);
+		g.fill(x + 1, y + h - 2, x + w - 1, y + h - 1, lo);
+		g.fill(x + w - 2, y + 1, x + w - 1, y + h - 1, lo);
+	}
+
+	/** Bagian "masuk" (dropdown, track slider): gelap di atas/kiri, terang di bawah/kanan. */
+	private void inset(GuiGraphicsExtractor g, int x, int y, int w, int h, int face) {
+		g.fill(x, y, x + w, y + h, C_OUT);
+		g.fill(x + 1, y + 1, x + w - 1, y + h - 1, face);
+		g.fill(x + 1, y + 1, x + w - 1, y + 2, C_INSET_DK);
+		g.fill(x + 1, y + 1, x + 2, y + h - 1, C_INSET_DK);
+		g.fill(x + 1, y + h - 2, x + w - 1, y + h - 1, C_INSET_LT);
+		g.fill(x + w - 2, y + 1, x + w - 1, y + h - 1, C_INSET_LT);
+	}
+
+	/** Garis pemisah berlekuk (gelap lalu terang). */
+	private void groove(GuiGraphicsExtractor g, int x1, int x2, int y) {
+		g.fill(x1, y, x2, y + 1, 0xFF0D0D0E);
+		g.fill(x1, y + 1, x2, y + 2, 0xFF434445);
+	}
+
 	// ---------------- gambar ----------------
 	private void button(GuiGraphicsExtractor g, int x, int y, int w, int h, String label, int mx, int my,
 			int clipT, int clipB, boolean enabled, Runnable click) {
+		button(g, x, y, w, h, label, mx, my, clipT, clipB, enabled, false, click);
+	}
+
+	private void button(GuiGraphicsExtractor g, int x, int y, int w, int h, String label, int mx, int my,
+			int clipT, int clipB, boolean enabled, boolean primary, Runnable click) {
 		Font f = this.minecraft.font;
 		boolean hov = enabled && mx >= x && mx < x + w && my >= Math.max(y, clipT) && my < Math.min(y + h, clipB);
-		g.fill(x, y, x + w, y + h, !enabled ? C_BTN_OFF : hov ? C_BTN_H : C_BTN);
+		if (!enabled) bevel(g, x, y, w, h, C_OFF, C_OFF_HI, C_OFF_LO, C_OUT);
+		else if (primary) bevel(g, x, y, w, h, hov ? G_FACE_H : G_FACE, G_HI, G_LO, G_OUT);
+		else bevel(g, x, y, w, h, hov ? C_BTN_H : C_BTN, hov ? C_BTN_HI_H : C_BTN_HI, C_BTN_LO, C_OUT);
 		g.text(f, label, x + (w - f.width(label)) / 2, y + (h - 8) / 2, enabled ? C_TEXT : C_MUTED);
 		if (enabled && click != null) hits.add(new Hit(x, y, x + w, y + h, clipT, clipB, click, null, null));
 	}
@@ -174,9 +215,20 @@ public class ConfigScreen extends Screen {
 		int ty = rowY + 17;
 		float t = Math.max(0f, Math.min(1f, (value - min) / (max - min)));
 		int hx = x + Math.round(t * w);
-		g.fill(x, ty, x + w, ty + 2, C_TRACK);
-		g.fill(x, ty, hx, ty + 2, C_ACCENT);
-		g.fill(hx - 2, ty - 4, hx + 2, ty + 6, C_TEXT);
+
+		// track masuk + isian hijau
+		inset(g, x - 1, ty - 2, w + 2, 6, C_INSET);
+		if (hx > x) {
+			g.fill(x, ty - 1, hx, ty + 2, G_FACE);
+			g.fill(x, ty - 1, hx, ty, G_HI);
+		}
+
+		// pegangan bevel
+		boolean hov = curMx >= hx - 5 && curMx < hx + 5 && curMy >= ty - 8 && curMy < ty + 9;
+		boolean drag = dragging != null && dragging.y1 == ty - 6 && dragging.x1 == x - 3;
+		if (drag) bevel(g, hx - 3, ty - 6, 7, 12, G_FACE, G_HI, G_LO, C_OUT);
+		else bevel(g, hx - 3, ty - 6, 7, 12, hov ? 0xFFDADBDC : C_HANDLE, C_HANDLE_HI, C_HANDLE_LO, C_OUT);
+
 		hits.add(new Hit(x - 3, ty - 6, x + w + 3, ty + 8, listTop, listBottom, null, mx -> {
 			double tt = Math.max(0.0, Math.min(1.0, (mx - x) / (double) w));
 			setter.accept(min + tt * (max - min));
@@ -190,20 +242,28 @@ public class ConfigScreen extends Screen {
 		popAnchorFound = false;
 		Font f = this.minecraft.font;
 
+		curMx = mouseX;
+		curMy = mouseY;
+
+		// latar redup + bayangan panel
 		g.fill(0, 0, this.width, this.height, 0xB0101010);
-		g.fill(pX, pY, pX + pW, pY + pH, C_BG);
+		g.fill(pX + 4, pY + 4, pX + pW + 4, pY + pH + 4, 0x40000000);
+		g.fill(pX + 2, pY + 2, pX + pW + 2, pY + pH + 2, 0x50000000);
+		bevel(g, pX, pY, pW, pH, C_BG, C_BG_HI, C_BG_LO, C_OUT);
 
 		drawSidebar(g, mouseX, mouseY);
 
 		// header
-		g.fill(cX, pY, cX + cW, pY + HEAD_H, C_HEAD);
-		g.fill(cX, pY + HEAD_H - 1, cX + cW, pY + HEAD_H, C_LINE);
+		g.fill(cX, pY + 1, cX + cW - 1, pY + HEAD_H - 1, C_HEAD);
+		g.fill(cX, pY + 1, cX + cW - 1, pY + 2, 0xFF3F4041);
+		groove(g, cX, cX + cW - 1, pY + HEAD_H - 2);
 		g.text(f, PAGES[page], cX + 8, pY + 10, C_TEXT);
+		g.fill(cX + 8, pY + 20, cX + 8 + f.width(PAGES[page]), pY + 22, C_ACCENT);
 		int bx = cX + cW - 8;
 		bx -= 20;
 		button(g, bx, pY + 5, 20, 18, "X", mouseX, mouseY, Integer.MIN_VALUE, Integer.MAX_VALUE, true, this::onClose);
 		bx -= 54;
-		button(g, bx, pY + 5, 50, 18, "Apply", mouseX, mouseY, Integer.MIN_VALUE, Integer.MAX_VALUE, true, this::apply);
+		button(g, bx, pY + 5, 50, 18, "Apply", mouseX, mouseY, Integer.MIN_VALUE, Integer.MAX_VALUE, true, true, this::apply);
 		bx -= 64;
 		button(g, bx, pY + 5, 60, 18, "Reset all", mouseX, mouseY, Integer.MIN_VALUE, Integer.MAX_VALUE, true, () -> {
 			cfg.entries.clear();
@@ -220,12 +280,13 @@ public class ConfigScreen extends Screen {
 		}
 
 		// footer
-		g.fill(cX, listBottom, cX + cW, pY + pH, C_HEAD);
+		g.fill(cX, listBottom, cX + cW - 1, pY + pH - 1, C_HEAD);
+		groove(g, cX, cX + cW - 1, listBottom);
 		String hint;
 		if (System.currentTimeMillis() - appliedAt < 2500) hint = "Applied!";
 		else if (page == LIBRARY) hint = "Preview works after Apply  |  Drop .ogg files onto this window to import";
 		else hint = "Double-click a slider to reset  |  Click Apply to save and reload sounds";
-		g.text(f, fit(hint, cW - 16), cX + 8, listBottom + 4,
+		g.text(f, fit(hint, cW - 16), cX + 8, listBottom + 5,
 				System.currentTimeMillis() - appliedAt < 2500 ? C_ACCENT : C_MUTED);
 
 		drawPopup(g, mouseX, mouseY);
@@ -234,14 +295,16 @@ public class ConfigScreen extends Screen {
 
 	private void drawSidebar(GuiGraphicsExtractor g, int mx, int my) {
 		Font f = this.minecraft.font;
-		g.fill(pX, pY, pX + sideW, pY + pH, C_SIDE);
-		g.fill(pX + sideW, pY, pX + sideW + 1, pY + pH, C_LINE);
+		g.fill(pX + 1, pY + 1, pX + sideW, pY + pH - 1, C_SIDE);
+		g.fill(pX + sideW, pY + 1, pX + sideW + 1, pY + pH - 1, C_OUT);
+		g.fill(pX + sideW + 1, pY + 1, pX + sideW + 2, pY + pH - 1, 0xFF3A3B3C);
 		g.text(f, "Better Sounds", pX + 10, pY + 10, C_TEXT);
-		g.text(f, "Java port  |  by MSAB14", pX + 10, pY + 22, C_MUTED);
-		g.fill(pX, pY + 38, pX + sideW, pY + 39, C_LINE);
+		g.fill(pX + 10, pY + 21, pX + 10 + f.width("Better Sounds"), pY + 23, C_ACCENT);
+		g.text(f, "Java port  |  by MSAB14", pX + 10, pY + 27, C_MUTED);
+		groove(g, pX + 1, pX + sideW, pY + 40);
 
-		g.text(f, "SOUNDS", pX + 10, pY + 48, C_MUTED);
-		int y = pY + 62;
+		g.text(f, "SOUNDS", pX + 10, pY + 50, C_MUTED);
+		int y = pY + 64;
 		for (int i = 0; i <= 4; i++) {
 			sideItem(g, i, y, mx, my);
 			y += 20;
@@ -256,9 +319,12 @@ public class ConfigScreen extends Screen {
 		Font f = this.minecraft.font;
 		boolean sel = page == idx;
 		boolean hov = mx >= pX && mx < pX + sideW && my >= y && my < y + 18;
-		if (sel || hov) g.fill(pX, y, pX + sideW, y + 18, sel ? C_SEL : C_ROW_A);
-		if (sel) g.fill(pX, y, pX + 2, y + 18, C_ACCENT);
-		g.text(f, PAGES[idx], pX + 14, y + 5, sel ? C_TEXT : C_MUTED);
+		if (sel) {
+			bevel(g, pX + 4, y, sideW - 8, 18, G_FACE, G_HI, G_LO, G_OUT);
+		} else if (hov) {
+			bevel(g, pX + 4, y, sideW - 8, 18, C_BTN, C_BTN_HI, C_BTN_LO, C_OUT);
+		}
+		g.text(f, PAGES[idx], pX + 14, y + 5, sel || hov ? C_TEXT : C_MUTED);
 		hits.add(new Hit(pX, y, pX + sideW, y + 18, Integer.MIN_VALUE, Integer.MAX_VALUE, () -> {
 			page = idx;
 			scroll = 0;
@@ -280,7 +346,8 @@ public class ConfigScreen extends Screen {
 		int dropX = playX + playW + 2;
 
 		// judul kolom
-		g.fill(cX, pY + HEAD_H, cX + cW, pY + HEAD_H + COL_H, C_SIDE);
+		g.fill(cX, pY + HEAD_H, cX + cW - 1, pY + HEAD_H + COL_H, C_SIDE);
+		g.fill(cX, pY + HEAD_H + COL_H - 1, cX + cW - 1, pY + HEAD_H + COL_H, 0xFF0D0D0E);
 		g.text(f, "Sound Name", nameX, pY + HEAD_H + 4, C_MUTED);
 		g.text(f, "Volume", volX + (sliderW - f.width("Volume")) / 2, pY + HEAD_H + 4, C_MUTED);
 		g.text(f, "Pitch", pitX + (sliderW - f.width("Pitch")) / 2, pY + HEAD_H + 4, C_MUTED);
@@ -304,8 +371,13 @@ public class ConfigScreen extends Screen {
 			final SoundConfig.Entry e = cfg.get(key);
 			if (!choices.contains(e.choice)) e.choice = "default";
 
-			g.fill(cX, y, cX + cW, y + ROW_H, i % 2 == 0 ? C_ROW_A : C_ROW_B);
-			if (!e.isDefault()) g.fill(cX, y, cX + 2, y + ROW_H, C_ACCENT);
+			g.fill(cX, y, cX + cW - 1, y + ROW_H, i % 2 == 0 ? C_ROW_A : C_ROW_B);
+			g.fill(cX, y, cX + cW - 1, y + 1, C_ROW_HI);
+			g.fill(cX, y + ROW_H - 1, cX + cW - 1, y + ROW_H, C_ROW_LO);
+			if (!e.isDefault()) {
+				g.fill(cX, y + 1, cX + 3, y + ROW_H - 1, G_FACE);
+				g.fill(cX, y + 1, cX + 1, y + ROW_H - 1, G_HI);
+			}
 			g.text(f, fit(pretty(key), nameW), nameX, y + 9, C_TEXT);
 
 			slider(g, volX, y, sliderW, e.volume, 0f, 1f, Math.round(e.volume * 100f) + "%",
@@ -320,10 +392,10 @@ public class ConfigScreen extends Screen {
 			// dropdown pilihan suara
 			boolean open = key.equals(popupKey);
 			boolean hov = mx >= dropX && mx < dropX + dropW && my >= Math.max(y + 5, listTop) && my < Math.min(y + 21, listBottom);
-			g.fill(dropX, y + 5, dropX + dropW, y + 21, open || hov ? C_BTN_H : C_BTN);
+			inset(g, dropX, y + 5, dropW, 16, open || hov ? C_INSET_H : C_INSET);
 			String shown = "default".equals(e.choice) ? "Default" : stem(e.choice);
 			g.text(f, fit(shown, dropW - 18), dropX + 4, y + 9, C_TEXT);
-			g.text(f, "v", dropX + dropW - 10, y + 9, C_MUTED);
+			g.text(f, "v", dropX + dropW - 10, y + 9, open || hov ? C_ACCENT : C_MUTED);
 			hits.add(new Hit(dropX, y + 5, dropX + dropW, y + 21, listTop, listBottom, () -> {
 				popupKey = key.equals(popupKey) ? null : key;
 				popupScroll = 0;
@@ -346,18 +418,19 @@ public class ConfigScreen extends Screen {
 
 	private void drawScrollbar(GuiGraphicsExtractor g, int contentH, int viewH) {
 		if (contentH <= viewH) return;
-		int x = cX + cW - 5;
-		g.fill(x, listTop, x + 4, listBottom, C_TRACK);
+		int x = cX + cW - 8;
+		inset(g, x, listTop, 6, listBottom - listTop, C_INSET);
 		int thumbH = Math.max(16, viewH * viewH / contentH);
-		int thumbY = listTop + (int) ((long) (viewH - thumbH) * scroll / Math.max(1, maxScroll));
-		g.fill(x, thumbY, x + 4, thumbY + thumbH, C_BTN_H);
+		int thumbY = listTop + (int) ((long) (viewH - thumbH - 2) * scroll / Math.max(1, maxScroll));
+		bevel(g, x, thumbY + 1, 6, thumbH, G_FACE, G_HI, G_LO, G_OUT);
 	}
 
 	private void drawLibrary(GuiGraphicsExtractor g, int mx, int my) {
 		Font f = this.minecraft.font;
 		List<String> files = SoundConfig.library();
 		int infoY = pY + HEAD_H;
-		g.fill(cX, infoY, cX + cW, listTop, C_SIDE);
+		g.fill(cX, infoY, cX + cW - 1, listTop, C_SIDE);
+		g.fill(cX, listTop - 1, cX + cW - 1, listTop, 0xFF0D0D0E);
 		g.text(f, fit("Drop .ogg (Vorbis) files onto this window to import them.", cW - 16), cX + 8, infoY + 7, C_TEXT);
 		g.text(f, fit("Folder: config/bettersounds/library   |   " + files.size() + " file(s)", cW - 16), cX + 8, infoY + 21, C_MUTED);
 
@@ -371,7 +444,9 @@ public class ConfigScreen extends Screen {
 			int y = listTop - scroll + i * LIB_ROW_H;
 			if (y + LIB_ROW_H < listTop || y > listBottom) continue;
 			final String file = files.get(i);
-			g.fill(cX, y, cX + cW, y + LIB_ROW_H, i % 2 == 0 ? C_ROW_A : C_ROW_B);
+			g.fill(cX, y, cX + cW - 1, y + LIB_ROW_H, i % 2 == 0 ? C_ROW_A : C_ROW_B);
+			g.fill(cX, y, cX + cW - 1, y + 1, C_ROW_HI);
+			g.fill(cX, y + LIB_ROW_H - 1, cX + cW - 1, y + LIB_ROW_H, C_ROW_LO);
 			int btnRight = cX + cW - 12;
 			g.text(f, fit(stem(file), cW - 16 - 100), cX + 8, y + 8, C_TEXT);
 			button(g, btnRight - 54, y + 3, 54, 18, "Remove", mx, my, listTop, listBottom, true, () -> {
@@ -408,15 +483,15 @@ public class ConfigScreen extends Screen {
 		int y = popAy + popAh + 1;
 		if (y + h > pY + pH) y = popAy - h - 1;
 
-		g.fill(x - 1, y - 1, x + w + 1, y + h + 1, C_LINE);
-		g.fill(x, y, x + w, y + h, C_SIDE);
+		g.fill(x + 2, y + 2, x + w + 3, y + h + 3, 0x66000000);
+		bevel(g, x - 1, y - 1, w + 2, h + 2, C_SIDE, C_BG_HI, C_BG_LO, C_OUT);
 		for (int i = 0; i < vis; i++) {
 			final String choice = choices.get(popupScroll + i);
 			int iy = y + 1 + i * itemH;
 			boolean hov = mx >= x && mx < x + w && my >= iy && my < iy + itemH;
 			boolean sel = choice.equals(e.choice);
-			if (hov || sel) g.fill(x, iy, x + w, iy + itemH, hov ? C_BTN_H : C_SEL);
-			if (sel) g.fill(x, iy, x + 2, iy + itemH, C_ACCENT);
+			if (hov) bevel(g, x, iy, w, itemH, C_BTN_H, C_BTN_HI_H, C_BTN_LO, C_OUT);
+			else if (sel) bevel(g, x, iy, w, itemH, G_FACE, G_HI, G_LO, G_OUT);
 			g.text(f, fit("default".equals(choice) ? "Default" : stem(choice), w - 12), x + 6, iy + 3, C_TEXT);
 			hits.add(new Hit(x, iy, x + w, iy + itemH, Integer.MIN_VALUE, Integer.MAX_VALUE, () -> {
 				e.choice = choice;
