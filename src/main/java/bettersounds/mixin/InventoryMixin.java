@@ -23,6 +23,9 @@ public abstract class InventoryMixin {
 		bettersounds$lastSlot = now;
 		if (!changed) return;
 		Minecraft mc = Minecraft.getInstance();
-		if (mc != null && mc.player != null && mc.player.getInventory() == self) UiSounds.hotbar();
+		if (mc != null && mc.player != null && mc.player.getInventory() == self) {
+			UiSounds.hotbar();
+			UiSounds.select(mc.player.getMainHandItem());
+		}
 	}
 }

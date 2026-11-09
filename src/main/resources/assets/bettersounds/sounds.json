@@ -1,13 +1,177 @@
 {
-  "item.drop":         { "sounds": [ "minecraft:better/random/pop" ] },
-  "ui.hotbar_scroll":  { "sounds": [ "ui/hotbar_scroll" ] },
-  "ui.slider_scroll":  { "sounds": [ "ui/slider_scroll" ] },
-  "ui.hover":          { "sounds": [ "ui/hover" ] },
-  "ui.gui_open":       { "sounds": [ "ui/gui_open" ] },
-  "ui.gui_close":      { "sounds": [ "ui/gui_close" ] },
-  "ui.inventory_open": { "sounds": [ "ui/inventory_open" ] },
-  "ui.inventory_close":{ "sounds": [ "ui/inventory_close" ] },
-  "ui.chat_open":      { "sounds": [ "ui/chat_open" ] },
-  "ui.chat_close":     { "sounds": [ "ui/chat_close" ] },
-  "ui.world_join":     { "sounds": [ "ui/world_join" ] }
+  "item.drop": {
+    "sounds": [
+      "minecraft:better/random/pop"
+    ]
+  },
+  "ui.hotbar_scroll": {
+    "sounds": [
+      "ui/hotbar_scroll"
+    ]
+  },
+  "ui.slider_scroll": {
+    "sounds": [
+      "ui/slider_scroll"
+    ]
+  },
+  "ui.hover": {
+    "sounds": [
+      "ui/hover"
+    ]
+  },
+  "ui.gui_open": {
+    "sounds": [
+      "ui/gui_open"
+    ]
+  },
+  "ui.gui_close": {
+    "sounds": [
+      "ui/gui_close"
+    ]
+  },
+  "ui.inventory_open": {
+    "sounds": [
+      "ui/inventory_open"
+    ]
+  },
+  "ui.inventory_close": {
+    "sounds": [
+      "ui/inventory_close"
+    ]
+  },
+  "ui.chat_open": {
+    "sounds": [
+      "ui/chat_open"
+    ]
+  },
+  "ui.chat_close": {
+    "sounds": [
+      "ui/chat_close"
+    ]
+  },
+  "ui.world_join": {
+    "sounds": [
+      "ui/world_join"
+    ]
+  },
+  "ui.chat_type": {
+    "sounds": [
+      "ui/chat_type"
+    ]
+  },
+  "ui.chat_delete": {
+    "sounds": [
+      "ui/chat_delete"
+    ]
+  },
+  "ui.chat_send": {
+    "sounds": [
+      "ui/chat_send"
+    ]
+  },
+  "item.swing.sword": {
+    "sounds": [
+      "ui/swing_sword"
+    ]
+  },
+  "item.swing.axe": {
+    "sounds": [
+      "ui/swing_axe"
+    ]
+  },
+  "item.swing.pickaxe": {
+    "sounds": [
+      "ui/swing_pickaxe"
+    ]
+  },
+  "item.swing.shovel": {
+    "sounds": [
+      "ui/swing_shovel"
+    ]
+  },
+  "item.swing.hoe": {
+    "sounds": [
+      "ui/swing_hoe"
+    ]
+  },
+  "item.swing.trident": {
+    "sounds": [
+      "ui/swing_trident"
+    ]
+  },
+  "item.swing.mace": {
+    "sounds": [
+      "ui/swing_mace"
+    ]
+  },
+  "item.swing.fist": {
+    "sounds": [
+      "ui/swing_fist"
+    ]
+  },
+  "item.swing.item": {
+    "sounds": [
+      "ui/swing_item"
+    ]
+  },
+  "item.select.sword": {
+    "sounds": [
+      "ui/select_sword"
+    ]
+  },
+  "item.select.axe": {
+    "sounds": [
+      "ui/select_axe"
+    ]
+  },
+  "item.select.pickaxe": {
+    "sounds": [
+      "ui/select_pickaxe"
+    ]
+  },
+  "item.select.shovel": {
+    "sounds": [
+      "ui/select_shovel"
+    ]
+  },
+  "item.select.hoe": {
+    "sounds": [
+      "ui/select_hoe"
+    ]
+  },
+  "item.select.trident": {
+    "sounds": [
+      "ui/select_trident"
+    ]
+  },
+  "item.select.mace": {
+    "sounds": [
+      "ui/select_mace"
+    ]
+  },
+  "item.select.ranged": {
+    "sounds": [
+      "ui/select_ranged"
+    ]
+  },
+  "item.select.armor": {
+    "sounds": [
+      "ui/select_armor"
+    ]
+  },
+  "item.select.block": {
+    "sounds": [
+      "ui/select_block"
+    ]
+  },
+  "item.select.shield": {
+    "sounds": [
+      "ui/select_shield"
+    ]
+  },
+  "item.select.item": {
+    "sounds": [
+      "ui/select_item"
+    ]
+  }
 }

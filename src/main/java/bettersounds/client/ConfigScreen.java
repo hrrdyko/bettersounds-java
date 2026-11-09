@@ -42,11 +42,18 @@ public class ConfigScreen extends Screen {
 		final int x1, y1, x2, y2, clipT, clipB;
 		final Runnable click, reset;
 		final DoubleConsumer slide;
+		final boolean quiet; // true = tidak memutar suara klik (mis. tombol Play)
 
 		Hit(int x1, int y1, int x2, int y2, int clipT, int clipB, Runnable click, DoubleConsumer slide, Runnable reset) {
+			this(x1, y1, x2, y2, clipT, clipB, click, slide, reset, false);
+		}
+
+		Hit(int x1, int y1, int x2, int y2, int clipT, int clipB, Runnable click, DoubleConsumer slide, Runnable reset,
+				boolean quiet) {
 			this.x1 = x1; this.y1 = y1; this.x2 = x2; this.y2 = y2;
 			this.clipT = clipT; this.clipB = clipB;
 			this.click = click; this.slide = slide; this.reset = reset;
+			this.quiet = quiet;
 		}
 
 		boolean contains(double mx, double my) {
@@ -120,6 +127,8 @@ public class ConfigScreen extends Screen {
 			k = k.substring(c + 1);
 		}
 		if (k.equals("item.drop")) return "Drop Item";
+		if (k.startsWith("item.swing.")) return "Swing - " + cap(k.substring("item.swing.".length()));
+		if (k.startsWith("item.select.")) return "Equip - " + cap(k.substring("item.select.".length()));
 		StringBuilder sb = new StringBuilder(prefix);
 		boolean first = true;
 		for (String p : k.split("[._]")) {
@@ -267,21 +276,43 @@ public class ConfigScreen extends Screen {
 
 	private void button(GuiGraphicsExtractor g, int x, int y, int w, int h, String label, int mx, int my,
 			int clipT, int clipB, boolean enabled, boolean primary, Runnable click) {
+		button(g, x, y, w, h, label, mx, my, clipT, clipB, enabled, primary, false, click);
+	}
+
+	private void button(GuiGraphicsExtractor g, int x, int y, int w, int h, String label, int mx, int my,
+			int clipT, int clipB, boolean enabled, boolean primary, boolean quiet, Runnable click) {
 		Font f = this.minecraft.font;
 		boolean hov = enabled && mx >= x && mx < x + w && my >= Math.max(y, clipT) && my < Math.min(y + h, clipB);
 		if (!enabled) bevel(g, x, y, w, h, C_OFF, C_OFF_HI, C_OFF_LO, C_OUT);
 		else if (primary) bevel(g, x, y, w, h, hov ? G_FACE_H : G_FACE, G_HI, G_LO, G_OUT);
 		else bevel(g, x, y, w, h, hov ? C_BTN_H : C_BTN, hov ? C_BTN_HI_H : C_BTN_HI, C_BTN_LO, C_OUT);
 		g.text(f, label, x + (w - f.width(label)) / 2, y + (h - 8) / 2, enabled ? C_TEXT : C_MUTED);
-		if (enabled && click != null) hits.add(new Hit(x, y, x + w, y + h, clipT, clipB, click, null, null));
+		if (enabled && click != null) hits.add(new Hit(x, y, x + w, y + h, clipT, clipB, click, null, null, quiet));
+	}
+
+	private static final float MAX_VOL = 5.0f; // volume per event sampai 500% (suara UI vanilla diputar 25%)
+
+	/** Slider volume: separuh kiri 0-100% (halus), separuh kanan 100-500%. */
+	private static double volToT(double v) {
+		return v <= 1.0 ? v / 2.0 : 0.5 + (v - 1.0) / (MAX_VOL - 1.0) / 2.0;
+	}
+
+	private static double tToVol(double t) {
+		return t <= 0.5 ? t * 2.0 : 1.0 + (t - 0.5) * 2.0 * (MAX_VOL - 1.0);
 	}
 
 	private void slider(GuiGraphicsExtractor g, int x, int rowY, int w, float value, float min, float max, double step,
 			String text, DoubleConsumer setter, Runnable reset) {
+		slider(g, x, rowY, w, value, v -> (v - min) / (max - min), t -> min + t * (max - min), step, text, setter, reset);
+	}
+
+	private void slider(GuiGraphicsExtractor g, int x, int rowY, int w, float value,
+			java.util.function.DoubleUnaryOperator toT, java.util.function.DoubleUnaryOperator fromT, double step,
+			String text, DoubleConsumer setter, Runnable reset) {
 		Font f = this.minecraft.font;
 		g.text(f, text, x + (w - f.width(text)) / 2, rowY + 2, C_TEXT);
 		int ty = rowY + 16;
-		float t = Math.max(0f, Math.min(1f, (value - min) / (max - min)));
+		float t = (float) Math.max(0.0, Math.min(1.0, toT.applyAsDouble(value)));
 		int hx = x + Math.round(t * w);
 
 		inset(g, x - 1, ty - 2, w + 2, 6, C_INSET);
@@ -297,7 +328,7 @@ public class ConfigScreen extends Screen {
 
 		hits.add(new Hit(x - 3, ty - 6, x + w + 3, ty + 8, listTop, listBottom, null, mx -> {
 			double tt = Math.max(0.0, Math.min(1.0, (mx - x) / (double) w));
-			double nv = min + tt * (max - min);
+			double nv = fromT.applyAsDouble(tt);
 			double q = Math.round(nv / step) * step;
 			if (Double.isNaN(lastQ)) lastQ = Math.round(value / step) * step;
 			if (Math.abs(q - lastQ) > 1.0E-9) {
@@ -465,14 +496,15 @@ public class ConfigScreen extends Screen {
 			}
 			g.text(f, fit(info.label, nameW), nameX, y + 8, C_TEXT);
 
-			slider(g, volX, y, sliderW, e.volume, 0f, 1f, 0.01, Math.round(e.volume * 100f) + "%",
-					v -> e.volume = Math.round(Math.max(0f, Math.min(1f, (float) v)) * 100f) / 100f,
+			slider(g, volX, y, sliderW, e.volume, ConfigScreen::volToT, ConfigScreen::tToVol, 0.01,
+					Math.round(e.volume * 100f) + "%",
+					v -> e.volume = Math.round(Math.max(0f, Math.min(MAX_VOL, (float) v)) * 100f) / 100f,
 					() -> e.volume = 1.0f);
 			slider(g, pitX, y, sliderW, e.pitch, 0.5f, 2.0f, 0.05, String.format(Locale.ROOT, "%.2fx", e.pitch),
 					v -> e.pitch = Math.round(Math.max(0.5f, Math.min(2f, (float) v)) * 20f) / 20f,
 					() -> e.pitch = 1.0f);
 
-			button(g, playX, y + 4, playW, 16, ">", mx, my, listTop, listBottom, true, () -> preview(key));
+			button(g, playX, y + 4, playW, 16, ">", mx, my, listTop, listBottom, true, false, true, () -> preview(key));
 
 			boolean open = key.equals(popupKey);
 			boolean hov = mx >= dropX && mx < dropX + dropW && my >= Math.max(y + 4, listTop) && my < Math.min(y + 20, listBottom);
@@ -549,7 +581,7 @@ public class ConfigScreen extends Screen {
 					if (item.equals(e.choice)) e.choice = "default";
 				}
 			});
-			button(g, btnRight - 52 - 4 - 34, y + 3, 34, 16, "Play", mx, my, listTop, listBottom, true, () -> {
+			button(g, btnRight - 52 - 4 - 34, y + 3, 34, 16, "Play", mx, my, listTop, listBottom, true, false, true, () -> {
 				try {
 					List<String> mem = SoundConfig.members(item);
 					if (mem.isEmpty()) return;
@@ -648,7 +680,7 @@ public class ConfigScreen extends Screen {
 					h.slide.accept(mx);
 				}
 			} else if ((btn == 0 || btn == 1) && h.click != null) {
-				UiSounds.click();
+				if (!h.quiet) UiSounds.click();
 				h.click.run();
 			}
 			return true;

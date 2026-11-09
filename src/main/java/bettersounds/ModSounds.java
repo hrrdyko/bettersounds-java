@@ -5,6 +5,9 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvent;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /** Event suara milik mod ini (tidak ada di Minecraft vanilla). */
 public final class ModSounds {
 	public static SoundEvent ITEM_DROP;
@@ -12,7 +15,18 @@ public final class ModSounds {
 	public static SoundEvent GUI_OPEN, GUI_CLOSE, INVENTORY_OPEN, INVENTORY_CLOSE, CHAT_OPEN, CHAT_CLOSE;
 	public static SoundEvent WORLD_JOIN;
 
+	/** Kategori item untuk suara ayunan (swing) dan suara saat item dipilih di hotbar. */
+	public static final String[] SWING = {"sword", "axe", "pickaxe", "shovel", "hoe", "trident", "mace", "fist", "item"};
+	public static final String[] SELECT = {"sword", "axe", "pickaxe", "shovel", "hoe", "trident", "mace", "ranged",
+			"armor", "block", "shield", "item"};
+
+	private static final Map<String, SoundEvent> MAP = new HashMap<>();
+
 	private ModSounds() {}
+
+	public static SoundEvent get(String path) {
+		return MAP.get(path);
+	}
 
 	public static void registerAll() {
 		ITEM_DROP = reg("item.drop");
@@ -26,10 +40,17 @@ public final class ModSounds {
 		CHAT_OPEN = reg("ui.chat_open");
 		CHAT_CLOSE = reg("ui.chat_close");
 		WORLD_JOIN = reg("ui.world_join");
+		reg("ui.chat_type");
+		reg("ui.chat_delete");
+		reg("ui.chat_send");
+		for (String c : SWING) reg("item.swing." + c);
+		for (String c : SELECT) reg("item.select." + c);
 	}
 
 	private static SoundEvent reg(String path) {
 		Identifier id = Identifier.fromNamespaceAndPath(BetterSoundsMod.MOD_ID, path);
-		return Registry.register(BuiltInRegistries.SOUND_EVENT, id, SoundEvent.createVariableRangeEvent(id));
+		SoundEvent ev = Registry.register(BuiltInRegistries.SOUND_EVENT, id, SoundEvent.createVariableRangeEvent(id));
+		MAP.put(path, ev);
+		return ev;
 	}
 }

@@ -8,6 +8,7 @@ import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvent;
+import net.minecraft.world.item.ItemStack;
 
 /** Pemutar suara UI tambahan (hotbar, hover, slider, buka/tutup layar, join dunia). */
 public final class UiSounds {
@@ -56,13 +57,46 @@ public final class UiSounds {
 		play(ModSounds.WORLD_JOIN);
 	}
 
-	/** Suara klik tombol bawaan Minecraft (dipakai tombol buatan sendiri di layar pengaturan). */
+	/** Suara klik tombol bawaan Minecraft. Volumenya 0.25 seperti di game aslinya (tombol vanilla). */
 	public static void click() {
 		try {
 			Identifier id = Identifier.fromNamespaceAndPath("minecraft", "ui.button.click");
-			play(SoundEvent.createVariableRangeEvent(id), 1.0F, 1.0F);
+			play(SoundEvent.createVariableRangeEvent(id), 1.0F, 0.25F);
 		} catch (Throwable ignored) {
 		}
+	}
+
+	private static final long[] SW = {0}, SEL = {0}, CT = {0};
+
+	/** Suara ayunan senjata/alat saat menyerang (meleset atau mengenai). */
+	public static void swing() {
+		Minecraft mc = Minecraft.getInstance();
+		if (mc == null || mc.player == null || !throttle(SW, 130)) return;
+		play(ModSounds.get("item.swing." + ItemCategory.swing(mc.player.getMainHandItem())), 1.0F, 0.7F);
+	}
+
+	/** Suara pelan sesuai jenis item yang baru dipilih di hotbar. */
+	public static void select(ItemStack stack) {
+		String c = ItemCategory.of(stack);
+		if (c == null || !throttle(SEL, 60)) return;
+		play(ModSounds.get("item.select." + c), 1.0F, 0.3F);
+	}
+
+	private static boolean inChat() {
+		Minecraft mc = Minecraft.getInstance();
+		return mc != null && mc.gui.screen() instanceof ChatScreen;
+	}
+
+	public static void chatType() {
+		if (inChat() && throttle(CT, 20)) play(ModSounds.get("ui.chat_type"), 1.0F, 0.4F);
+	}
+
+	public static void chatDelete() {
+		if (inChat() && throttle(CT, 20)) play(ModSounds.get("ui.chat_delete"), 1.0F, 0.4F);
+	}
+
+	public static void chatSend() {
+		play(ModSounds.get("ui.chat_send"), 1.0F, 0.5F);
 	}
 
 	public static void screenChange(Screen old, Screen next) {

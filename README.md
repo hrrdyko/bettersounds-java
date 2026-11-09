@@ -7,7 +7,9 @@ Pack asli: https://www.curseforge.com/minecraft-bedrock/texture-packs/better-sou
 ## Fitur
 - Seluruh suara Better Sounds untuk Java (blok, mob, item, cuaca, dll.).
 - Suara saat melempar (drop) item.
-- Suara UI baru: scroll hotbar, scroll slider, hover tombol, buka/tutup inventory/chat/menu, masuk dunia/server.
+- Suara UI baru: scroll hotbar, scroll slider, hover tombol, buka/tutup inventory/chat/menu, masuk dunia/server, mengetik/menghapus/mengirim chat.
+- Suara ayunan (swing) per jenis alat/senjata (pedang, kapak, pickaxe, sekop, cangkul, trident, mace, tangan kosong, item lain) dan suara pelan saat item dipilih di hotbar (pedang, kapak, blok, armor, dst.). Semua bisa diatur di tab Item dan GUI.
+- Volume per event bisa sampai 500% (suara klik tombol vanilla hanya diputar 25%).
 - Pengaturan untuk SEMUA event suara di game (vanilla dan mod lain), dikelompokkan: GUI, Block, Entity, Item, World, Mods.
 - Layar pengaturan per suara: tekan **K** (bisa diubah di Controls), ketik `/bettersounds`, atau klik tombol config di **Mod Menu**.
   - Volume (0-100%) dan pitch (0.5x-2.0x) tiap suara.

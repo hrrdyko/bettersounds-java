@@ -28,10 +28,16 @@ public class SoundEditorScreen extends Screen {
 		final int x1, y1, x2, y2;
 		final Runnable click;
 		final DoubleConsumer slide;
+		final boolean quiet;
 
 		Hit(int x1, int y1, int x2, int y2, Runnable click, DoubleConsumer slide) {
+			this(x1, y1, x2, y2, click, slide, false);
+		}
+
+		Hit(int x1, int y1, int x2, int y2, Runnable click, DoubleConsumer slide, boolean quiet) {
 			this.x1 = x1; this.y1 = y1; this.x2 = x2; this.y2 = y2;
 			this.click = click; this.slide = slide;
+			this.quiet = quiet;
 		}
 
 		boolean contains(double mx, double my) {
@@ -90,12 +96,17 @@ public class SoundEditorScreen extends Screen {
 	}
 
 	private void button(GuiGraphicsExtractor g, int x, int y, int bw, int bh, String label, boolean primary, Runnable click) {
+		button(g, x, y, bw, bh, label, primary, false, click);
+	}
+
+	private void button(GuiGraphicsExtractor g, int x, int y, int bw, int bh, String label, boolean primary, boolean quiet,
+			Runnable click) {
 		Font f = this.minecraft.font;
 		boolean hov = curMx >= x && curMx < x + bw && curMy >= y && curMy < y + bh;
 		if (primary) bevel(g, x, y, bw, bh, hov ? G_FACE_H : G_FACE, G_HI, G_LO, G_OUT);
 		else bevel(g, x, y, bw, bh, hov ? C_BTN_H : C_BTN, hov ? C_BTN_HI_H : C_BTN_HI, C_BTN_LO, C_OUT);
 		g.text(f, label, x + (bw - f.width(label)) / 2, y + (bh - 8) / 2, C_TEXT);
-		hits.add(new Hit(x, y, x + bw, y + bh, click, null));
+		hits.add(new Hit(x, y, x + bw, y + bh, click, null, quiet));
 	}
 
 	private void slider(GuiGraphicsExtractor g, int x, int y, int sw, String label, String valueText,
@@ -215,8 +226,8 @@ public class SoundEditorScreen extends Screen {
 		// tombol
 		int by = pY + pH - 26;
 		int bx = pX + 10;
-		button(g, bx, by, 46, 18, "Play", true, () -> AudioPipeline.preview(pcm, w));
-		button(g, bx + 50, by, 46, 18, "Stop", false, AudioPipeline::stopPreview);
+		button(g, bx, by, 46, 18, "Play", true, true, () -> AudioPipeline.preview(pcm, w));
+		button(g, bx + 50, by, 46, 18, "Stop", false, true, AudioPipeline::stopPreview);
 		button(g, bx + 100, by, 52, 18, "Reset", false, () -> w.copyFrom(new SoundConfig.Edit()));
 		button(g, pX + pW - 10 - 56 - 4 - 56, by, 56, 18, "Cancel", false, this::onClose);
 		button(g, pX + pW - 10 - 56, by, 56, 18, "Save", true, () -> {
@@ -238,7 +249,7 @@ public class SoundEditorScreen extends Screen {
 				dragging = h;
 				h.slide.accept(mx);
 			} else if (h.click != null) {
-				UiSounds.click();
+				if (!h.quiet) UiSounds.click();
 				h.click.run();
 			}
 			return true;

@@ -15,7 +15,7 @@ public final class SoundRuntime {
 		Map<Identifier, float[]> m = new HashMap<>();
 		for (Map.Entry<String, SoundConfig.Entry> e : cfg.entries.entrySet()) {
 			SoundConfig.Entry v = e.getValue();
-			if (v.volume >= 0.999f && Math.abs(v.pitch - 1.0f) < 0.001f) continue;
+			if (Math.abs(v.volume - 1.0f) < 0.001f && Math.abs(v.pitch - 1.0f) < 0.001f) continue;
 			try {
 				String key = e.getKey();
 				int c = key.indexOf(':');

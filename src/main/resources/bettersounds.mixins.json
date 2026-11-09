@@ -10,7 +10,11 @@
     "ClientPacketListenerMixin",
     "AbstractWidgetMixin",
     "AbstractSliderButtonMixin",
-    "SoundBufferLibraryMixin"
+    "SoundBufferLibraryMixin",
+    "MinecraftMixin",
+    "MultiPlayerGameModeMixin",
+    "EditBoxMixin",
+    "ChatScreenMixin"
   ],
   "injectors": {
     "defaultRequire": 0

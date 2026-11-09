@@ -56,7 +56,7 @@ public final class SoundConfig {
 		public String choice = "default";
 
 		boolean isDefault() {
-			return volume >= 0.999f && Math.abs(pitch - 1.0f) < 0.001f && "default".equals(choice);
+			return Math.abs(volume - 1.0f) < 0.001f && Math.abs(pitch - 1.0f) < 0.001f && "default".equals(choice);
 		}
 	}
 
