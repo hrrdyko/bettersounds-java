@@ -5,7 +5,7 @@ import javazoom.jl.decoder.Decoder;
 import javazoom.jl.decoder.Header;
 import javazoom.jl.decoder.SampleBuffer;
 import net.minecraft.client.sounds.AudioStream;
-import net.minecraft.client.sounds.OggAudioStream;
+import net.minecraft.client.sounds.JOrbisAudioStream;
 
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
@@ -109,7 +109,7 @@ public final class AudioPipeline {
 	}
 
 	private static Pcm decodeOgg(Path p) throws Exception {
-		try (InputStream in = Files.newInputStream(p); AudioStream ogg = new OggAudioStream(in)) {
+		try (InputStream in = Files.newInputStream(p); AudioStream ogg = new JOrbisAudioStream(in)) {
 			AudioFormat f = ogg.getFormat();
 			java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
 			while (true) {
