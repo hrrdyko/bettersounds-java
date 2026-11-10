@@ -263,6 +263,81 @@ public final class SoundConfig {
 		}
 	}
 
+	// ---------- ganti nama / hapus anggota ----------
+	private static String cleanBase(String input) {
+		String b = sanitize(input.trim()).replace('.', '_');
+		return b;
+	}
+
+	/**
+	 * Mengganti nama file atau grup di Library (ekstensi file tetap). Referensi di pengaturan ikut diperbarui.
+	 * @return nama baru, atau null kalau gagal (nama kosong atau sudah dipakai).
+	 */
+	public String renameItem(String old, String input) {
+		String base = cleanBase(input);
+		if (base.isEmpty()) return null;
+		boolean group = isGroup(old);
+		String ext = group ? "" : old.substring(stem(old).length());
+		String neu = base + ext;
+		if (neu.equals(old)) return old;
+		Set<String> taken = takenIds();
+		taken.remove(group ? old : stem(old));
+		if (taken.contains(base)) return null;
+		try {
+			Files.move(LIBRARY_DIR.resolve(old), LIBRARY_DIR.resolve(neu));
+		} catch (IOException e) {
+			LOGGER.warn("Gagal mengganti nama {}", old, e);
+			return null;
+		}
+		if (group) {
+			Map<String, Edit> moved = new TreeMap<>();
+			for (Map.Entry<String, Edit> e : edits.entrySet()) {
+				if (e.getKey().startsWith(old + "/")) moved.put(neu + e.getKey().substring(old.length()), e.getValue());
+			}
+			edits.keySet().removeIf(k -> k.startsWith(old + "/"));
+			edits.putAll(moved);
+		} else {
+			Edit ed = edits.remove(old);
+			if (ed != null) edits.put(neu, ed);
+		}
+		for (Entry en : entries.values()) if (old.equals(en.choice)) en.choice = neu;
+		invalidateLibrary();
+		return neu;
+	}
+
+	/** Mengganti nama satu file di dalam grup. @return path relatif baru ("grup/nama.ext"), atau null kalau gagal. */
+	public String renameMember(String group, String oldRel, String input) {
+		String base = cleanBase(input);
+		if (base.isEmpty()) return null;
+		String leaf = oldRel.substring(oldRel.lastIndexOf('/') + 1);
+		String ext = leaf.substring(stem(leaf).length());
+		String neuRel = group + "/" + base + ext;
+		if (neuRel.equals(oldRel)) return oldRel;
+		for (String m : members(group)) {
+			if (!m.equals(oldRel) && stem(m).equals(group + "/" + base)) return null;
+		}
+		try {
+			Files.move(LIBRARY_DIR.resolve(oldRel), LIBRARY_DIR.resolve(neuRel));
+		} catch (IOException e) {
+			LOGGER.warn("Gagal mengganti nama {}", oldRel, e);
+			return null;
+		}
+		Edit ed = edits.remove(oldRel);
+		if (ed != null) edits.put(neuRel, ed);
+		invalidateLibrary();
+		return neuRel;
+	}
+
+	public void removeMember(String rel) {
+		try {
+			Files.deleteIfExists(LIBRARY_DIR.resolve(rel));
+		} catch (IOException e) {
+			LOGGER.warn("Gagal menghapus {}", rel, e);
+		}
+		edits.remove(rel);
+		invalidateLibrary();
+	}
+
 	// ---------- impor ----------
 	/** Nama file harus huruf kecil [a-z0-9._-] agar valid sebagai nama suara Minecraft. */
 	static String sanitize(String name) {

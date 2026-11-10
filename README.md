@@ -22,7 +22,8 @@ Pack asli: https://www.curseforge.com/minecraft-bedrock/texture-packs/better-sou
 - Impor suara sendiri lewat tombol **Files** / **Folder** di halaman Library, atau drag & drop file **.ogg, .mp3, .wav**, folder, atau **.zip** ke jendela game.
 - Folder atau .zip berisi banyak suara menjadi **grup**: saat dipilih untuk suatu event, variannya diputar acak (seperti suara stone bawaan).
 - Dropdown tiap event punya pilihan **Default** (Better Sounds), **Vanilla** (suara asli Minecraft), atau item Library. Tombol **Set all shown** mengubah semua baris hasil pencarian sekaligus.
-- Di halaman **Library**, klik **Edit** untuk memotong (trim), mengubah kecepatan (0.25x-4x), dan volume (0-1000%) langsung di dalam game.
+- Di halaman **Library**, klik **Edit** untuk mengganti nama, memotong (trim), mengubah kecepatan (0.25x-4x), dan volume (0-1000%) langsung di dalam game. Untuk grup (folder), Edit membuka daftar isinya: ganti nama folder, putar, ganti nama, edit, atau hapus tiap file.
+- Klik nama suara (di daftar event maupun Library) untuk memutarnya.
 - Klik **Apply** supaya suara hasil edit dipakai game (dirender ke `config/bettersounds/rendered/`).
 
 ## Build

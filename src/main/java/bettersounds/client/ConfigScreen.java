@@ -200,8 +200,8 @@ public class ConfigScreen extends Screen {
 	}
 
 	private void layout() {
-		pW = Math.min(this.width - 16, Math.max(380, Math.min(520, this.width * 68 / 100)));
-		pH = Math.min(this.height - 16, Math.max(240, Math.min(330, this.height * 78 / 100)));
+		pW = Math.min(this.width - 16, Math.max(400, Math.min(600, this.width * 78 / 100)));
+		pH = Math.min(this.height - 16, Math.max(250, Math.min(360, this.height * 86 / 100)));
 		pX = (this.width - pW) / 2;
 		pY = (this.height - pH) / 2;
 		sideW = Math.max(78, Math.min(96, pW / 5));
@@ -389,8 +389,8 @@ public class ConfigScreen extends Screen {
 		boolean applied = System.currentTimeMillis() - appliedAt < 2500;
 		String hint;
 		if (applied) hint = "Applied!";
-		else if (page == LIBRARY) hint = "Drop files, folders or .zip to import  |  Apply to use";
-		else hint = "Double-click a slider to reset  |  Apply to save";
+		else if (page == LIBRARY) hint = "Click a name to play it  |  Edit renames and edits  |  Apply to use";
+		else hint = "Click a sound name to play it  |  Double-click a slider to reset  |  Apply to save";
 		g.text(f, fit(hint, cW - 16), cX + 8, listBottom + 4, applied ? C_ACCENT : C_MUTED);
 
 		drawPopup(g, mouseX, mouseY);
@@ -404,10 +404,9 @@ public class ConfigScreen extends Screen {
 		g.fill(pX + sideW + 1, pY + 1, pX + sideW + 2, pY + pH - 1, 0xFF3A3B3C);
 		g.text(f, "Better Sounds", pX + 9, pY + 8, C_TEXT);
 		g.fill(pX + 9, pY + 18, pX + 9 + f.width("Better Sounds"), pY + 19, C_ACCENT);
-		g.text(f, "by MSAB14", pX + 9, pY + 23, C_MUTED);
-		groove(g, pX + 1, pX + sideW, pY + 36);
+		groove(g, pX + 1, pX + sideW, pY + 27);
 
-		int y = pY + 44;
+		int y = pY + 36;
 		for (int i = 0; i < LIBRARY; i++) {
 			sideItem(g, i, y, mx, my);
 			y += 19;
@@ -436,15 +435,14 @@ public class ConfigScreen extends Screen {
 	private void drawSounds(GuiGraphicsExtractor g, int mx, int my) {
 		Font f = this.minecraft.font;
 		int usable = cW - 22;
-		int gap = 8, playW = 14;
-		int nameW = usable * 32 / 100;
-		int dropW = Math.max(70, usable * 21 / 100);
-		int sliderW = Math.max(28, (usable - nameW - dropW - playW - 4 * gap) / 2);
+		int gap = 8;
+		int nameW = usable * 34 / 100;
+		int dropW = Math.max(76, usable * 22 / 100);
+		int sliderW = Math.max(28, (usable - nameW - dropW - 3 * gap) / 2);
 		int nameX = cX + 8;
 		int volX = nameX + nameW + gap;
 		int pitX = volX + sliderW + gap;
-		int playX = pitX + sliderW + gap;
-		int dropX = playX + playW + 2;
+		int dropX = pitX + sliderW + gap;
 
 		// judul kolom
 		g.fill(cX, pY + HEAD_H, cX + cW - 1, pY + HEAD_H + COL_H, C_SIDE);
@@ -452,25 +450,7 @@ public class ConfigScreen extends Screen {
 		g.text(f, "Sound", nameX, pY + HEAD_H + 3, C_MUTED);
 		g.text(f, "Volume", volX + (sliderW - f.width("Volume")) / 2, pY + HEAD_H + 3, C_MUTED);
 		g.text(f, "Pitch", pitX + (sliderW - f.width("Pitch")) / 2, pY + HEAD_H + 3, C_MUTED);
-		g.text(f, "Playback", playX, pY + HEAD_H + 3, C_MUTED);
-
-		// ubah pilihan suara untuk semua baris yang sedang tampil (hasil pencarian)
-		int setW = dropW, setX = dropX, setY = pY + HEAD_H + 1, setH = COL_H - 2;
-		boolean setOpen = ALL.equals(popupKey);
-		boolean setHov = mx >= setX && mx < setX + setW && my >= setY && my < setY + setH;
-		bevel(g, setX, setY, setW, setH, setOpen || setHov ? C_BTN_H : C_BTN, setOpen || setHov ? C_BTN_HI_H : C_BTN_HI, C_BTN_LO, C_OUT);
-		g.text(f, "Set all shown v", setX + (setW - f.width("Set all shown v")) / 2, setY + 2, C_TEXT);
-		hits.add(new Hit(setX, setY, setX + setW, setY + setH, Integer.MIN_VALUE, Integer.MAX_VALUE, () -> {
-			popupKey = ALL.equals(popupKey) ? null : ALL;
-			popupScroll = 0;
-		}, null, null));
-		if (setOpen) {
-			popAx = setX;
-			popAy = setY;
-			popAw = setW;
-			popAh = setH;
-			popAnchorFound = true;
-		}
+		g.text(f, "Playback", dropX, pY + HEAD_H + 3, C_MUTED);
 
 		List<KeyInfo> keys = visible();
 		int viewH = listBottom - listTop;
@@ -494,7 +474,9 @@ public class ConfigScreen extends Screen {
 				g.fill(cX, y + 1, cX + 3, y + ROW_H - 1, G_FACE);
 				g.fill(cX, y + 1, cX + 1, y + ROW_H - 1, G_HI);
 			}
-			g.text(f, fit(info.label, nameW), nameX, y + 8, C_TEXT);
+			boolean nameHov = mx >= nameX && mx < nameX + nameW && my >= Math.max(y, listTop) && my < Math.min(y + ROW_H, listBottom);
+			g.text(f, fit(info.label, nameW), nameX, y + 8, nameHov ? C_ACCENT : C_TEXT);
+			hits.add(new Hit(nameX, y, nameX + nameW, y + ROW_H, listTop, listBottom, () -> preview(key), null, null, true));
 
 			slider(g, volX, y, sliderW, e.volume, ConfigScreen::volToT, ConfigScreen::tToVol, 0.01,
 					Math.round(e.volume * 100f) + "%",
@@ -503,8 +485,6 @@ public class ConfigScreen extends Screen {
 			slider(g, pitX, y, sliderW, e.pitch, 0.5f, 2.0f, 0.05, String.format(Locale.ROOT, "%.2fx", e.pitch),
 					v -> e.pitch = Math.round(Math.max(0.5f, Math.min(2f, (float) v)) * 20f) / 20f,
 					() -> e.pitch = 1.0f);
-
-			button(g, playX, y + 4, playW, 16, ">", mx, my, listTop, listBottom, true, false, true, () -> preview(key));
 
 			boolean open = key.equals(popupKey);
 			boolean hov = mx >= dropX && mx < dropX + dropW && my >= Math.max(y + 4, listTop) && my < Math.min(y + 20, listBottom);
@@ -574,14 +554,10 @@ public class ConfigScreen extends Screen {
 			String label;
 			if (group) label = "[Group] " + item + "  (" + SoundConfig.members(item).size() + " sounds)";
 			else label = cfg.edit(item).isDefault() ? item : item + " *";
-			g.text(f, fit(label, cW - 16 - 140), cX + 8, y + 7, C_TEXT);
-			button(g, btnRight - 52, y + 3, 52, 16, "Remove", mx, my, listTop, listBottom, true, () -> {
-				cfg.removeFromLibrary(item);
-				for (SoundConfig.Entry e : cfg.entries.values()) {
-					if (item.equals(e.choice)) e.choice = "default";
-				}
-			});
-			button(g, btnRight - 52 - 4 - 34, y + 3, 34, 16, "Play", mx, my, listTop, listBottom, true, false, true, () -> {
+			int nameW = cW - 16 - 110;
+			boolean nameHov = mx >= cX + 8 && mx < cX + 8 + nameW && my >= Math.max(y, listTop) && my < Math.min(y + LIB_ROW_H, listBottom);
+			g.text(f, fit(label, nameW), cX + 8, y + 7, nameHov ? C_ACCENT : C_TEXT);
+			hits.add(new Hit(cX + 8, y, cX + 8 + nameW, y + LIB_ROW_H, listTop, listBottom, () -> {
 				try {
 					List<String> mem = SoundConfig.members(item);
 					if (mem.isEmpty()) return;
@@ -590,11 +566,16 @@ public class ConfigScreen extends Screen {
 				} catch (Exception ex) {
 					SoundConfig.LOGGER.warn("Gagal memutar {}", item, ex);
 				}
+			}, null, null, true));
+			button(g, btnRight - 52, y + 3, 52, 16, "Remove", mx, my, listTop, listBottom, true, () -> {
+				cfg.removeFromLibrary(item);
+				for (SoundConfig.Entry e : cfg.entries.values()) {
+					if (item.equals(e.choice)) e.choice = "default";
+				}
 			});
-			if (!group) {
-				button(g, btnRight - 52 - 4 - 34 - 4 - 34, y + 3, 34, 16, "Edit", mx, my, listTop, listBottom, true,
-						() -> this.minecraft.gui.setScreen(new SoundEditorScreen(this, cfg, item)));
-			}
+			button(g, btnRight - 52 - 4 - 34, y + 3, 34, 16, "Edit", mx, my, listTop, listBottom, true,
+					() -> this.minecraft.gui.setScreen(group ? new GroupEditorScreen(this, cfg, item)
+							: new SoundEditorScreen(this, cfg, item)));
 		}
 		g.disableScissor();
 		if (items.isEmpty()) g.text(f, "Library is empty. Use Files / Folder, or drop files here.", cX + 8, listTop + 8, C_MUTED);

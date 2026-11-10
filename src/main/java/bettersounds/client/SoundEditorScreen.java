@@ -2,6 +2,7 @@ package bettersounds.client;
 
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -12,16 +13,16 @@ import java.util.List;
 import java.util.Locale;
 import java.util.function.DoubleConsumer;
 
-/** Editor suara di dalam game: potong (trim), kecepatan, dan volume (sampai 1000%). */
+/** Editor suara di dalam game: ganti nama, potong (trim), kecepatan, dan volume (sampai 1000%). */
 public class SoundEditorScreen extends Screen {
 	private static final int C_OUT = 0xFF000000;
 	private static final int C_BG = 0xFF2A2A2B, C_BG_HI = 0xFF4B4C4E, C_BG_LO = 0xFF161617;
-	private static final int C_HEAD = 0xFF323334, C_SIDE = 0xFF212122;
+	private static final int C_HEAD = 0xFF323334;
 	private static final int C_BTN = 0xFF4D4E50, C_BTN_HI = 0xFF7D7E81, C_BTN_LO = 0xFF2E2F30;
 	private static final int C_BTN_H = 0xFF5F6063, C_BTN_HI_H = 0xFF909194;
 	private static final int C_INSET = 0xFF121213, C_INSET_DK = 0xFF040404, C_INSET_LT = 0xFF3E3F41;
 	private static final int G_FACE = 0xFF3C8527, G_HI = 0xFF72C24D, G_LO = 0xFF22501A, G_OUT = 0xFF0E2A0A, G_FACE_H = 0xFF4A9A31;
-	private static final int C_TEXT = 0xFFFFFFFF, C_MUTED = 0xFFA8A8A8, C_ACCENT = 0xFF5DBB3D;
+	private static final int C_TEXT = 0xFFFFFFFF, C_MUTED = 0xFFA8A8A8, C_ACCENT = 0xFF5DBB3D, C_ERROR = 0xFFE06060;
 	private static final int C_HANDLE = 0xFFC8C9CB, C_HANDLE_HI = 0xFFF4F5F6, C_HANDLE_LO = 0xFF77787A;
 
 	private static final class Hit {
@@ -47,11 +48,16 @@ public class SoundEditorScreen extends Screen {
 
 	private final Screen parent;
 	private final SoundConfig cfg;
-	private final String file;
+	private String file;
+	private final String group; // null kalau file tunggal
+	private final String ext;
+	private final String baseName;
 	private final SoundConfig.Edit w = new SoundConfig.Edit();
 	private final List<Hit> hits = new ArrayList<>();
 	private AudioPipeline.Pcm pcm;
 	private String error;
+	private String status;
+	private EditBox nameBox;
 	private float[] peaks;
 	private int peaksW = -1;
 	private Hit dragging;
@@ -62,6 +68,11 @@ public class SoundEditorScreen extends Screen {
 		this.parent = parent;
 		this.cfg = cfg;
 		this.file = file;
+		int slash = file.lastIndexOf('/');
+		this.group = slash >= 0 ? file.substring(0, slash) : null;
+		String leaf = file.substring(slash + 1);
+		this.baseName = SoundConfig.stem(leaf);
+		this.ext = leaf.substring(baseName.length());
 		this.w.copyFrom(cfg.edit(file));
 		try {
 			this.pcm = AudioPipeline.decodeCached(file);
@@ -69,6 +80,24 @@ public class SoundEditorScreen extends Screen {
 			this.error = "Cannot read this file: " + e.getClass().getSimpleName();
 			SoundConfig.LOGGER.warn("Gagal membaca {}", file, e);
 		}
+	}
+
+	private void layout() {
+		pW = Math.min(this.width - 16, 400);
+		pH = 252;
+		pX = (this.width - pW) / 2;
+		pY = Math.max(8, (this.height - pH) / 2);
+	}
+
+	@Override
+	protected void init() {
+		layout();
+		String old = nameBox == null ? baseName : nameBox.getValue();
+		int extW = this.minecraft.font.width(ext) + 6;
+		nameBox = new EditBox(this.minecraft.font, pX + 52, pY + 28, pW - 52 - 10 - extW, 16, Component.literal("Name"));
+		nameBox.setMaxLength(40);
+		nameBox.setValue(old);
+		this.addRenderableWidget(nameBox);
 	}
 
 	// ---------------- gambar ----------------
@@ -157,28 +186,29 @@ public class SoundEditorScreen extends Screen {
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
 		Font f = this.minecraft.font;
+		layout();
 		curMx = mouseX;
 		curMy = mouseY;
 		hits.clear();
-		pW = Math.min(this.width - 16, 400);
-		pH = 226;
-		pX = (this.width - pW) / 2;
-		pY = Math.max(8, (this.height - pH) / 2);
 
 		g.fill(0, 0, this.width, this.height, 0xB0101010);
 		g.fill(pX + 4, pY + 4, pX + pW + 4, pY + pH + 4, 0x40000000);
 		g.fill(pX + 2, pY + 2, pX + pW + 2, pY + pH + 2, 0x50000000);
 		bevel(g, pX, pY, pW, pH, C_BG, C_BG_HI, C_BG_LO, C_OUT);
 
-		// judul
+		// judul + nama
 		g.fill(pX + 1, pY + 1, pX + pW - 1, pY + 22, C_HEAD);
 		groove(g, pX + 1, pX + pW - 1, pY + 22);
-		g.text(f, "Edit: " + file, pX + 10, pY + 8, C_TEXT);
+		g.text(f, "Edit: " + (group == null ? file : file.substring(group.length() + 1)), pX + 10, pY + 8, C_TEXT);
+		g.text(f, "Name", pX + 10, pY + 32, C_MUTED);
+		nameBox.extractRenderState(g, mouseX, mouseY, partialTick);
+		g.text(f, ext, pX + pW - 10 - f.width(ext) - 2, pY + 32, C_MUTED);
 
-		int wx = pX + 10, wy = pY + 32, ww = pW - 20, wh = 70;
+		int by = pY + pH - 26;
+		int wx = pX + 10, wy = pY + 52, ww = pW - 20, wh = 70;
 		if (pcm == null) {
 			g.text(f, error == null ? "No audio" : error, wx, wy + 10, C_MUTED);
-			button(g, pX + pW - 70, pY + pH - 26, 60, 18, "Back", false, this::onClose);
+			drawBottom(g, by, false);
 			return;
 		}
 
@@ -217,23 +247,39 @@ public class SoundEditorScreen extends Screen {
 
 		// slider kecepatan & volume
 		int sx = pX + 70, sw = pW - 70 - 70;
-		slider(g, sx, pY + 128, sw, "Speed", String.format(Locale.ROOT, "%.2fx", w.speed), w.speed, 0.25f, 4.0f,
+		slider(g, sx, pY + 148, sw, "Speed", String.format(Locale.ROOT, "%.2fx", w.speed), w.speed, 0.25f, 4.0f,
 				v -> w.speed = Math.max(0.25f, Math.min(4f, Math.round((float) v * 20f) / 20f)));
-		slider(g, sx, pY + 152, sw, "Volume", Math.round(w.gain) + "%", w.gain, 0f, 1000f,
+		slider(g, sx, pY + 172, sw, "Volume", Math.round(w.gain) + "%", w.gain, 0f, 1000f,
 				v -> w.gain = Math.max(0f, Math.min(1000f, Math.round((float) v / 5f) * 5f)));
-		g.text(f, "Above 100% is boosted (soft-clipped). Preview is slightly quieter.", wx, pY + 174, C_MUTED);
+		g.text(f, status != null ? status : "Above 100% is boosted (soft-clipped). Preview is slightly quieter.",
+				wx, pY + 196, status != null ? C_ERROR : C_MUTED);
 
-		// tombol
-		int by = pY + pH - 26;
+		drawBottom(g, by, true);
+	}
+
+	private void drawBottom(GuiGraphicsExtractor g, int by, boolean full) {
 		int bx = pX + 10;
-		button(g, bx, by, 46, 18, "Play", true, true, () -> AudioPipeline.preview(pcm, w));
-		button(g, bx + 50, by, 46, 18, "Stop", false, true, AudioPipeline::stopPreview);
-		button(g, bx + 100, by, 52, 18, "Reset", false, () -> w.copyFrom(new SoundConfig.Edit()));
+		if (full) {
+			button(g, bx, by, 46, 18, "Play", true, true, () -> AudioPipeline.preview(pcm, w));
+			button(g, bx + 50, by, 46, 18, "Stop", false, true, AudioPipeline::stopPreview);
+			button(g, bx + 100, by, 52, 18, "Reset", false, () -> w.copyFrom(new SoundConfig.Edit()));
+		}
 		button(g, pX + pW - 10 - 56 - 4 - 56, by, 56, 18, "Cancel", false, this::onClose);
-		button(g, pX + pW - 10 - 56, by, 56, 18, "Save", true, () -> {
-			cfg.edit(file).copyFrom(w);
-			onClose();
-		});
+		button(g, pX + pW - 10 - 56, by, 56, 18, "Save", true, this::save);
+	}
+
+	private void save() {
+		cfg.edit(file).copyFrom(w);
+		String typed = nameBox.getValue().trim();
+		if (!typed.isEmpty() && !SoundConfig.sanitize(typed).replace('.', '_').equals(baseName)) {
+			String res = group == null ? cfg.renameItem(file, typed) : cfg.renameMember(group, file, typed);
+			if (res == null) {
+				status = "That name is empty or already used";
+				return;
+			}
+			file = res;
+		}
+		onClose();
 	}
 
 	// ---------------- input ----------------
@@ -241,6 +287,8 @@ public class SoundEditorScreen extends Screen {
 	public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
 		double mx = event.x(), my = event.y();
 		int btn = event.button();
+		if (nameBox != null && nameBox.isMouseOver(mx, my)) return super.mouseClicked(event, doubleClick);
+		if (nameBox != null) nameBox.setFocused(false);
 		if (btn != 0 && btn != 1) return true;
 		for (int i = hits.size() - 1; i >= 0; i--) {
 			Hit h = hits.get(i);
