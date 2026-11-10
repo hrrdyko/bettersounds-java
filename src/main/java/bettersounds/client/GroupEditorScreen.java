@@ -91,8 +91,6 @@ public class GroupEditorScreen extends Screen {
 		hits.clear();
 
 		g.fill(0, 0, this.width, this.height, 0xB0101010);
-		g.fill(pX + 4, pY + 4, pX + pW + 4, pY + pH + 4, 0x40000000);
-		g.fill(pX + 2, pY + 2, pX + pW + 2, pY + pH + 2, 0x50000000);
 		Ui.bevel(g, pX, pY, pW, pH, Ui.BG, Ui.BG_HI, Ui.BG_LO, Ui.OUT);
 
 		g.fill(pX + 1, pY + 1, pX + pW - 1, pY + 22, Ui.HEAD);
@@ -147,8 +145,7 @@ public class GroupEditorScreen extends Screen {
 			Ui.bevel(g, sx, thumbY, 5, thumbH, Ui.G_FACE, Ui.G_HI, Ui.G_LO, Ui.G_OUT);
 		}
 
-		g.text(f, status != null ? status : "Click a name to play it", pX + 10, listBottom + 6,
-				status != null ? Ui.ERROR : Ui.MUTED);
+		if (status != null) g.text(f, status, pX + 10, listBottom + 6, Ui.ERROR);
 		int by = pY + pH - 26;
 		button(g, pX + pW - 10 - 56 - 4 - 56, by, 56, 18, "Cancel", false, Integer.MIN_VALUE, Integer.MAX_VALUE, this::onClose);
 		button(g, pX + pW - 10 - 56, by, 56, 18, "Save", true, Integer.MIN_VALUE, Integer.MAX_VALUE, this::save);

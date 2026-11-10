@@ -36,7 +36,7 @@ public class ConfigScreen extends Screen {
 	private static final int C_TEXT = 0xFFFFFFFF, C_MUTED = 0xFFA8A8A8, C_ACCENT = 0xFF5DBB3D;
 	private static final int C_HANDLE = 0xFFC8C9CB, C_HANDLE_HI = 0xFFF4F5F6, C_HANDLE_LO = 0xFF77787A;
 
-	private static final int ROW_H = 24, LIB_ROW_H = 22, HEAD_H = 24, COL_H = 14, FOOT_H = 14;
+	private static final int ROW_H = 24, LIB_ROW_H = 22, HEAD_H = 24, COL_H = 14, FOOT_H = 0;
 
 	private static final class Hit {
 		final int x1, y1, x2, y2, clipT, clipB;
@@ -201,7 +201,7 @@ public class ConfigScreen extends Screen {
 
 	private void layout() {
 		pW = Math.min(this.width - 16, Math.max(400, Math.min(600, this.width * 78 / 100)));
-		pH = Math.min(this.height - 16, Math.max(250, Math.min(360, this.height * 86 / 100)));
+		pH = Math.min(this.height - 32, Math.max(250, Math.min(360, this.height * 86 / 100)));
 		pX = (this.width - pW) / 2;
 		pY = (this.height - pH) / 2;
 		sideW = Math.max(78, Math.min(96, pW / 5));
@@ -351,8 +351,6 @@ public class ConfigScreen extends Screen {
 
 		// latar redup + bayangan panel
 		g.fill(0, 0, this.width, this.height, 0xB0101010);
-		g.fill(pX + 4, pY + 4, pX + pW + 4, pY + pH + 4, 0x40000000);
-		g.fill(pX + 2, pY + 2, pX + pW + 2, pY + pH + 2, 0x50000000);
 		bevel(g, pX, pY, pW, pH, C_BG, C_BG_HI, C_BG_LO, C_OUT);
 
 		drawSidebar(g, mouseX, mouseY);
@@ -362,7 +360,6 @@ public class ConfigScreen extends Screen {
 		g.fill(cX, pY + 1, cX + cW - 1, pY + 2, 0xFF3F4041);
 		groove(g, cX, cX + cW - 1, pY + HEAD_H - 2);
 		g.text(f, PAGES[page], cX + 8, pY + 8, C_TEXT);
-		g.fill(cX + 8, pY + 18, cX + 8 + f.width(PAGES[page]), pY + 19, C_ACCENT);
 		int bx = cX + cW - 6;
 		bx -= 18;
 		button(g, bx, pY + 4, 18, 16, "X", mouseX, mouseY, Integer.MIN_VALUE, Integer.MAX_VALUE, true, this::onClose);
@@ -383,15 +380,11 @@ public class ConfigScreen extends Screen {
 			drawSounds(g, mouseX, mouseY);
 		}
 
-		// footer
-		g.fill(cX, listBottom, cX + cW - 1, pY + pH - 1, C_HEAD);
-		groove(g, cX, cX + cW - 1, listBottom);
+		// petunjuk di luar panel: teks abu-abu di pojok kanan bawah layar (tanpa kotak)
 		boolean applied = System.currentTimeMillis() - appliedAt < 2500;
-		String hint;
-		if (applied) hint = "Applied!";
-		else if (page == LIBRARY) hint = "Click a name to play it  |  Edit renames and edits  |  Apply to use";
-		else hint = "Click a sound name to play it  |  Double-click a slider to reset  |  Apply to save";
-		g.text(f, fit(hint, cW - 16), cX + 8, listBottom + 4, applied ? C_ACCENT : C_MUTED);
+		String hint = applied ? "Applied!"
+				: page == LIBRARY ? "Drop files, folders or .zip to import" : "Double-click a slider to reset";
+		g.text(f, hint, this.width - 8 - f.width(hint), this.height - 14, applied ? C_ACCENT : C_MUTED);
 
 		drawPopup(g, mouseX, mouseY);
 		if (popupKey != null && !popAnchorFound) popupKey = null;
@@ -403,7 +396,6 @@ public class ConfigScreen extends Screen {
 		g.fill(pX + sideW, pY + 1, pX + sideW + 1, pY + pH - 1, C_OUT);
 		g.fill(pX + sideW + 1, pY + 1, pX + sideW + 2, pY + pH - 1, 0xFF3A3B3C);
 		g.text(f, "Better Sounds", pX + 9, pY + 8, C_TEXT);
-		g.fill(pX + 9, pY + 18, pX + 9 + f.width("Better Sounds"), pY + 19, C_ACCENT);
 		groove(g, pX + 1, pX + sideW, pY + 27);
 
 		int y = pY + 36;
@@ -599,7 +591,6 @@ public class ConfigScreen extends Screen {
 		int y = popAy + popAh + 1;
 		if (y + h > pY + pH) y = popAy - h - 1;
 
-		g.fill(x + 2, y + 2, x + w + 3, y + h + 3, 0x66000000);
 		bevel(g, x - 1, y - 1, w + 2, h + 2, C_SIDE, C_BG_HI, C_BG_LO, C_OUT);
 		for (int i = 0; i < vis; i++) {
 			final String choice = choices.get(popupScroll + i);

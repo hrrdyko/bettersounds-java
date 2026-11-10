@@ -192,8 +192,6 @@ public class SoundEditorScreen extends Screen {
 		hits.clear();
 
 		g.fill(0, 0, this.width, this.height, 0xB0101010);
-		g.fill(pX + 4, pY + 4, pX + pW + 4, pY + pH + 4, 0x40000000);
-		g.fill(pX + 2, pY + 2, pX + pW + 2, pY + pH + 2, 0x50000000);
 		bevel(g, pX, pY, pW, pH, C_BG, C_BG_HI, C_BG_LO, C_OUT);
 
 		// judul + nama
