@@ -51,12 +51,30 @@ public final class SoundConfig {
 
 	public static final class Entry {
 		public float volume = 1.0f;
+		/** Rentang pitch acak (min..max) tiap kali suara diputar. */
+		public float pitchMin = 1.0f;
+		public float pitchMax = 1.0f;
+		/** Lama: satu nilai pitch. Dimigrasikan ke pitchMin/pitchMax saat config dimuat. */
 		public float pitch = 1.0f;
 		/** "default" = Better Sounds, "vanilla" = suara asli Minecraft, atau nama item Library. */
 		public String choice = "default";
 
 		boolean isDefault() {
-			return Math.abs(volume - 1.0f) < 0.001f && Math.abs(pitch - 1.0f) < 0.001f && "default".equals(choice);
+			return Math.abs(volume - 1.0f) < 0.001f && Math.abs(pitchMin - 1.0f) < 0.001f
+					&& Math.abs(pitchMax - 1.0f) < 0.001f && "default".equals(choice);
+		}
+
+		void normalize() {
+			if (Math.abs(pitch - 1.0f) > 0.001f && Math.abs(pitchMin - 1.0f) < 0.001f && Math.abs(pitchMax - 1.0f) < 0.001f) {
+				pitchMin = pitch;
+				pitchMax = pitch;
+			}
+			pitch = 1.0f;
+			if (pitchMin > pitchMax) {
+				float t = pitchMin;
+				pitchMin = pitchMax;
+				pitchMax = t;
+			}
 		}
 	}
 
@@ -99,6 +117,7 @@ public final class SoundConfig {
 					if (c != null) {
 						c.entries = c.entries == null ? new TreeMap<>() : new TreeMap<>(c.entries);
 						c.edits = c.edits == null ? new TreeMap<>() : new TreeMap<>(c.edits);
+						for (Entry en : c.entries.values()) en.normalize();
 						return c;
 					}
 				}

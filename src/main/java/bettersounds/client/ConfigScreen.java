@@ -37,12 +37,14 @@ public class ConfigScreen extends Screen {
 	private static final int C_HANDLE = 0xFFC8C9CB, C_HANDLE_HI = 0xFFF4F5F6, C_HANDLE_LO = 0xFF77787A;
 
 	private static final int ROW_H = 24, LIB_ROW_H = 22, HEAD_H = 24, COL_H = 14, FOOT_H = 0;
+	private static final int SIDE_COL = 18, SIDE_GAP = 6; // kolom di luar panel (tombol X dan scrollbar)
 
 	private static final class Hit {
 		final int x1, y1, x2, y2, clipT, clipB;
 		final Runnable click, reset;
 		final DoubleConsumer slide;
 		final boolean quiet; // true = tidak memutar suara klik (mis. tombol Play)
+		boolean vertical = false; // true = slide menerima koordinat y (scrollbar)
 
 		Hit(int x1, int y1, int x2, int y2, int clipT, int clipB, Runnable click, DoubleConsumer slide, Runnable reset) {
 			this(x1, y1, x2, y2, clipT, clipB, click, slide, reset, false);
@@ -87,6 +89,7 @@ public class ConfigScreen extends Screen {
 	private int maxScroll = 0;
 	private Hit dragging = null;
 	private double lastQ = Double.NaN;
+	private int dragPin = 0; // pin pitch yang sedang digeser: 1 = bawah, 2 = atas
 	private long appliedAt = 0;
 
 	// dropdown
@@ -200,9 +203,10 @@ public class ConfigScreen extends Screen {
 	}
 
 	private void layout() {
-		pW = Math.min(this.width - 16, Math.max(400, Math.min(600, this.width * 78 / 100)));
+		int outside = SIDE_GAP + SIDE_COL;
+		pW = Math.min(this.width - 16 - outside, Math.max(400, Math.min(600, this.width * 78 / 100)));
 		pH = Math.min(this.height - 32, Math.max(250, Math.min(360, this.height * 86 / 100)));
-		pX = (this.width - pW) / 2;
+		pX = (this.width - (pW + outside)) / 2; // panel + kolom luar dipusatkan bersama, margin kiri = kanan
 		pY = (this.height - pH) / 2;
 		sideW = Math.max(78, Math.min(96, pW / 5));
 		cX = pX + sideW + 1;
@@ -234,7 +238,7 @@ public class ConfigScreen extends Screen {
 		SoundConfig.invalidateLibrary();
 		layout();
 		String old = searchBox == null ? "" : searchBox.getValue();
-		int btnTotal = 56 + 3 + 46 + 3 + 18 + 6;
+		int btnTotal = 56 + 3 + 46 + 6;
 		int sbW = Math.max(60, Math.min(140, cW - 90 - btnTotal - 8));
 		searchBox = new EditBox(this.minecraft.font, cX + cW - btnTotal - sbW - 4, pY + 4, sbW, 16, Component.literal("Search"));
 		searchBox.setHint(Component.literal("Search sounds..."));
@@ -339,6 +343,73 @@ public class ConfigScreen extends Screen {
 		}, reset));
 	}
 
+	/** Teks panjang berjalan ke samping beberapa detik, berhenti sejenak di awal dan di akhir. */
+	private void marquee(GuiGraphicsExtractor g, String text, int x, int y, int w, int color) {
+		Font f = this.minecraft.font;
+		int tw = f.width(text);
+		if (tw <= w) {
+			g.text(f, text, x, y, color);
+			return;
+		}
+		int overflow = tw - w;
+		double pause = 1.2, speed = 28.0;
+		double scrollT = overflow / speed;
+		double cycle = pause + scrollT + pause;
+		double ph = (System.currentTimeMillis() % 3_600_000L) / 1000.0 % cycle;
+		int off = ph < pause ? 0 : ph < pause + scrollT ? (int) ((ph - pause) * speed) : overflow;
+		g.enableScissor(x, y - 2, x + w, y + 10);
+		g.text(f, text, x - off, y, color);
+		g.disableScissor();
+	}
+
+	/** Slider pitch dengan dua pin: batas bawah dan batas atas (pitch acak di antaranya tiap suara diputar). */
+	private void rangeSlider(GuiGraphicsExtractor g, int x, int rowY, int w, SoundConfig.Entry e) {
+		Font f = this.minecraft.font;
+		final float min = 0.5f, max = 2.0f;
+		String text = Math.abs(e.pitchMax - e.pitchMin) < 0.001f
+				? String.format(Locale.ROOT, "%.2fx", e.pitchMin)
+				: String.format(Locale.ROOT, "%.2f-%.2fx", e.pitchMin, e.pitchMax);
+		g.text(f, text, x + (w - f.width(text)) / 2, rowY + 2, C_TEXT);
+		int ty = rowY + 16;
+		int hx1 = x + Math.round((e.pitchMin - min) / (max - min) * w);
+		int hx2 = x + Math.round((e.pitchMax - min) / (max - min) * w);
+
+		inset(g, x - 1, ty - 2, w + 2, 6, C_INSET);
+		if (hx2 > hx1) {
+			g.fill(hx1, ty - 1, hx2, ty + 2, G_FACE);
+			g.fill(hx1, ty - 1, hx2, ty, G_HI);
+		}
+		boolean thisDrag = dragging != null && dragging.y1 == ty - 6 && dragging.x1 == x - 3;
+		for (int pin = 1; pin <= 2; pin++) {
+			int hx = pin == 1 ? hx1 : hx2;
+			boolean hov = curMx >= hx - 5 && curMx < hx + 5 && curMy >= ty - 8 && curMy < ty + 9;
+			if (thisDrag && dragPin == pin) bevel(g, hx - 3, ty - 6, 7, 12, G_FACE, G_HI, G_LO, C_OUT);
+			else bevel(g, hx - 3, ty - 6, 7, 12, hov ? 0xFFDADBDC : C_HANDLE, C_HANDLE_HI, C_HANDLE_LO, C_OUT);
+		}
+
+		hits.add(new Hit(x - 3, ty - 6, x + w + 3, ty + 8, listTop, listBottom, null, mx -> {
+			double tt = Math.max(0.0, Math.min(1.0, (mx - x) / (double) w));
+			float v = Math.round((min + tt * (max - min)) * 20f) / 20f;
+			// pilih pin: yang terdekat; kalau keduanya menumpuk, ikut arah geseran
+			if (dragPin == 0) {
+				float d1 = Math.abs(v - e.pitchMin), d2 = Math.abs(v - e.pitchMax);
+				dragPin = d1 < d2 ? 1 : d2 < d1 ? 2 : (v < e.pitchMin ? 1 : 2);
+			}
+			if (e.pitchMin == e.pitchMax) {
+				if (v < e.pitchMin) dragPin = 1;
+				else if (v > e.pitchMax) dragPin = 2;
+			}
+			float before = dragPin == 1 ? e.pitchMin : e.pitchMax;
+			if (dragPin == 1) e.pitchMin = Math.min(v, e.pitchMax);
+			else e.pitchMax = Math.max(v, e.pitchMin);
+			float after = dragPin == 1 ? e.pitchMin : e.pitchMax;
+			if (Math.abs(after - before) > 1.0E-6) UiSounds.slider();
+		}, () -> {
+			e.pitchMin = 1.0f;
+			e.pitchMax = 1.0f;
+		}));
+	}
+
 	// ---------------- gambar ----------------
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
@@ -360,9 +431,9 @@ public class ConfigScreen extends Screen {
 		g.fill(cX, pY + 1, cX + cW - 1, pY + 2, 0xFF3F4041);
 		groove(g, cX, cX + cW - 1, pY + HEAD_H - 2);
 		g.text(f, PAGES[page], cX + 8, pY + 8, C_TEXT);
-		int bx = cX + cW - 6;
-		bx -= 18;
-		button(g, bx, pY + 4, 18, 16, "X", mouseX, mouseY, Integer.MIN_VALUE, Integer.MAX_VALUE, true, this::onClose);
+		button(g, pX + pW + SIDE_GAP, pY, SIDE_COL, 18, "X", mouseX, mouseY, Integer.MIN_VALUE, Integer.MAX_VALUE, true,
+				this::onClose);
+		int bx = cX + cW - 3;
 		bx -= 49;
 		button(g, bx, pY + 4, 46, 16, "Apply", mouseX, mouseY, Integer.MIN_VALUE, Integer.MAX_VALUE, true, true, this::apply);
 		bx -= 59;
@@ -380,11 +451,11 @@ public class ConfigScreen extends Screen {
 			drawSounds(g, mouseX, mouseY);
 		}
 
-		// petunjuk di luar panel: teks abu-abu di pojok kanan bawah layar (tanpa kotak)
+		// petunjuk di luar panel: teks abu-abu di pojok kiri bawah layar (tanpa kotak)
 		boolean applied = System.currentTimeMillis() - appliedAt < 2500;
 		String hint = applied ? "Applied!"
 				: page == LIBRARY ? "Drop files, folders or .zip to import" : "Double-click a slider to reset";
-		g.text(f, hint, this.width - 8 - f.width(hint), this.height - 14, applied ? C_ACCENT : C_MUTED);
+		g.text(f, hint, 8, this.height - 14, applied ? C_ACCENT : C_MUTED);
 
 		drawPopup(g, mouseX, mouseY);
 		if (popupKey != null && !popAnchorFound) popupKey = null;
@@ -396,9 +467,9 @@ public class ConfigScreen extends Screen {
 		g.fill(pX + sideW, pY + 1, pX + sideW + 1, pY + pH - 1, C_OUT);
 		g.fill(pX + sideW + 1, pY + 1, pX + sideW + 2, pY + pH - 1, 0xFF3A3B3C);
 		g.text(f, "Better Sounds", pX + 9, pY + 8, C_TEXT);
-		groove(g, pX + 1, pX + sideW, pY + 27);
+		groove(g, pX + 1, pX + sideW, pY + HEAD_H - 2); // sejajar dengan garis header
 
-		int y = pY + 36;
+		int y = pY + HEAD_H + 6;
 		for (int i = 0; i < LIBRARY; i++) {
 			sideItem(g, i, y, mx, my);
 			y += 19;
@@ -467,21 +538,19 @@ public class ConfigScreen extends Screen {
 				g.fill(cX, y + 1, cX + 1, y + ROW_H - 1, G_HI);
 			}
 			boolean nameHov = mx >= nameX && mx < nameX + nameW && my >= Math.max(y, listTop) && my < Math.min(y + ROW_H, listBottom);
-			g.text(f, fit(info.label, nameW), nameX, y + 8, nameHov ? C_ACCENT : C_TEXT);
+			marquee(g, info.label, nameX, y + 8, nameW, nameHov ? C_ACCENT : C_TEXT);
 			hits.add(new Hit(nameX, y, nameX + nameW, y + ROW_H, listTop, listBottom, () -> preview(key), null, null, true));
 
 			slider(g, volX, y, sliderW, e.volume, ConfigScreen::volToT, ConfigScreen::tToVol, 0.01,
 					Math.round(e.volume * 100f) + "%",
 					v -> e.volume = Math.round(Math.max(0f, Math.min(MAX_VOL, (float) v)) * 100f) / 100f,
 					() -> e.volume = 1.0f);
-			slider(g, pitX, y, sliderW, e.pitch, 0.5f, 2.0f, 0.05, String.format(Locale.ROOT, "%.2fx", e.pitch),
-					v -> e.pitch = Math.round(Math.max(0.5f, Math.min(2f, (float) v)) * 20f) / 20f,
-					() -> e.pitch = 1.0f);
+			rangeSlider(g, pitX, y, sliderW, e);
 
 			boolean open = key.equals(popupKey);
 			boolean hov = mx >= dropX && mx < dropX + dropW && my >= Math.max(y + 4, listTop) && my < Math.min(y + 20, listBottom);
 			inset(g, dropX, y + 4, dropW, 16, open || hov ? C_INSET_H : C_INSET);
-			g.text(f, fit(choiceLabel(e.choice), dropW - 16), dropX + 4, y + 8, C_TEXT);
+			marquee(g, choiceLabel(e.choice), dropX + 4, y + 8, dropW - 16, C_TEXT);
 			g.text(f, "v", dropX + dropW - 10, y + 8, open || hov ? C_ACCENT : C_MUTED);
 			hits.add(new Hit(dropX, y + 4, dropX + dropW, y + 20, listTop, listBottom, () -> {
 				popupKey = key.equals(popupKey) ? null : key;
@@ -502,12 +571,24 @@ public class ConfigScreen extends Screen {
 	}
 
 	private void drawScrollbar(GuiGraphicsExtractor g, int contentH, int viewH) {
+		int colX = pX + pW + SIDE_GAP;
+		int sbX = colX + (SIDE_COL - 8) / 2;
+		int top = pY + 18 + SIDE_GAP;
+		int bottom = pY + pH;
+		inset(g, sbX, top, 8, bottom - top, C_INSET);
 		if (contentH <= viewH) return;
-		int x = cX + cW - 8;
-		inset(g, x, listTop, 6, listBottom - listTop, C_INSET);
-		int thumbH = Math.max(16, viewH * viewH / contentH);
-		int thumbY = listTop + (int) ((long) (viewH - thumbH - 2) * scroll / Math.max(1, maxScroll));
-		bevel(g, x, thumbY + 1, 6, thumbH, G_FACE, G_HI, G_LO, G_OUT);
+		int trackTop = top + 1;
+		int trackH = bottom - top - 2;
+		int thumbH = Math.max(18, trackH * viewH / contentH);
+		int thumbY = trackTop + (int) ((long) (trackH - thumbH) * scroll / Math.max(1, maxScroll));
+		bevel(g, sbX + 1, thumbY, 6, thumbH, G_FACE, G_HI, G_LO, G_OUT);
+		final int fTop = trackTop, fRange = Math.max(1, trackH - thumbH), fThumb = thumbH;
+		Hit h = new Hit(colX, top, colX + SIDE_COL, bottom, Integer.MIN_VALUE, Integer.MAX_VALUE, null, y -> {
+			double t = (y - fTop - fThumb / 2.0) / fRange;
+			scroll = (int) Math.round(Math.max(0.0, Math.min(1.0, t)) * maxScroll);
+		}, null);
+		h.vertical = true;
+		hits.add(h);
 	}
 
 	private void drawLibrary(GuiGraphicsExtractor g, int mx, int my) {
@@ -548,7 +629,7 @@ public class ConfigScreen extends Screen {
 			else label = cfg.edit(item).isDefault() ? item : item + " *";
 			int nameW = cW - 16 - 110;
 			boolean nameHov = mx >= cX + 8 && mx < cX + 8 + nameW && my >= Math.max(y, listTop) && my < Math.min(y + LIB_ROW_H, listBottom);
-			g.text(f, fit(label, nameW), cX + 8, y + 7, nameHov ? C_ACCENT : C_TEXT);
+			marquee(g, label, cX + 8, y + 7, nameW, nameHov ? C_ACCENT : C_TEXT);
 			hits.add(new Hit(cX + 8, y, cX + 8 + nameW, y + LIB_ROW_H, listTop, listBottom, () -> {
 				try {
 					List<String> mem = SoundConfig.members(item);
@@ -649,7 +730,8 @@ public class ConfigScreen extends Screen {
 				} else if (btn == 0 || btn == 1) {
 					dragging = h;
 					lastQ = Double.NaN;
-					h.slide.accept(mx);
+					dragPin = 0;
+					h.slide.accept(h.vertical ? my : mx);
 				}
 			} else if ((btn == 0 || btn == 1) && h.click != null) {
 				if (!h.quiet) UiSounds.click();
@@ -667,7 +749,7 @@ public class ConfigScreen extends Screen {
 	@Override
 	public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
 		if (dragging != null && dragging.slide != null) {
-			dragging.slide.accept(event.x());
+			dragging.slide.accept(dragging.vertical ? event.y() : event.x());
 			return true;
 		}
 		return super.mouseDragged(event, dx, dy);
@@ -677,6 +759,7 @@ public class ConfigScreen extends Screen {
 	public boolean mouseReleased(MouseButtonEvent event) {
 		dragging = null;
 		lastQ = Double.NaN;
+		dragPin = 0;
 		return super.mouseReleased(event);
 	}
 

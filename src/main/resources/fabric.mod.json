@@ -5,7 +5,7 @@
   "name": "Better Sounds",
   "description": "Sounds quality improvements with configurable sounds options.\nBetter Sounds unofficial Java port.",
   "authors": [
-    "Endemicsauce"
+    "endemicsauce"
   ],
   "icon": "assets/bettersounds/icon.png",
   "environment": "*",

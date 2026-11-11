@@ -173,5 +173,10 @@
     "sounds": [
       "ui/select_item"
     ]
+  },
+  "ui.scroll": {
+    "sounds": [
+      "ui/scroll"
+    ]
   }
 }

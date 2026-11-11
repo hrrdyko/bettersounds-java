@@ -26,6 +26,7 @@ public abstract class InventoryMixin {
 		if (mc != null && mc.player != null && mc.player.getInventory() == self) {
 			UiSounds.hotbar();
 			UiSounds.select(mc.player.getMainHandItem());
+			UiSounds.itemOwn(mc.player.getMainHandItem());
 		}
 	}
 }

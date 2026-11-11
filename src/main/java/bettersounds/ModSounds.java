@@ -40,6 +40,7 @@ public final class ModSounds {
 		CHAT_OPEN = reg("ui.chat_open");
 		CHAT_CLOSE = reg("ui.chat_close");
 		WORLD_JOIN = reg("ui.world_join");
+		reg("ui.scroll");
 		reg("ui.chat_type");
 		reg("ui.chat_delete");
 		reg("ui.chat_send");

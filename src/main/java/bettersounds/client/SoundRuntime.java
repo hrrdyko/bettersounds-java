@@ -15,14 +15,15 @@ public final class SoundRuntime {
 		Map<Identifier, float[]> m = new HashMap<>();
 		for (Map.Entry<String, SoundConfig.Entry> e : cfg.entries.entrySet()) {
 			SoundConfig.Entry v = e.getValue();
-			if (Math.abs(v.volume - 1.0f) < 0.001f && Math.abs(v.pitch - 1.0f) < 0.001f) continue;
+			if (Math.abs(v.volume - 1.0f) < 0.001f && Math.abs(v.pitchMin - 1.0f) < 0.001f
+					&& Math.abs(v.pitchMax - 1.0f) < 0.001f) continue;
 			try {
 				String key = e.getKey();
 				int c = key.indexOf(':');
 				Identifier id = c >= 0
 						? Identifier.fromNamespaceAndPath(key.substring(0, c), key.substring(c + 1))
 						: Identifier.fromNamespaceAndPath("minecraft", key);
-				m.put(id, new float[] {v.volume, v.pitch});
+				m.put(id, new float[] {v.volume, v.pitchMin, v.pitchMax});
 			} catch (Exception ex) {
 				SoundConfig.LOGGER.warn("Kunci suara tidak valid: {}", e.getKey());
 			}
@@ -35,8 +36,13 @@ public final class SoundRuntime {
 		return v == null ? 1.0F : v[0];
 	}
 
-	public static float pitch(Identifier id) {
+	public static float pitchMin(Identifier id) {
 		float[] v = map.get(id);
 		return v == null ? 1.0F : v[1];
+	}
+
+	public static float pitchMax(Identifier id) {
+		float[] v = map.get(id);
+		return v == null ? 1.0F : v[2];
 	}
 }

@@ -14,7 +14,9 @@
     "MinecraftMixin",
     "MultiPlayerGameModeMixin",
     "EditBoxMixin",
-    "ChatScreenMixin"
+    "ChatScreenMixin",
+    "MouseHandlerMixin",
+    "CreativeModeInventoryScreenMixin"
   ],
   "injectors": {
     "defaultRequire": 0
