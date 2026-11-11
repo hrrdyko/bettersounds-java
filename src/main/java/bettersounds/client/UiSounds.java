@@ -35,6 +35,26 @@ public final class UiSounds {
 		}
 	}
 
+	/**
+	 * Pratinjau sebuah event dengan volume dan pitch dari slider (belum disimpan).
+	 * Volume dasar 0.5 supaya rentang 0-200% terdengar bertahap (volume akhir dibatasi 1.0 oleh game).
+	 */
+	public static void playPreview(Identifier id, float volMul, float pitch) {
+		Minecraft mc = Minecraft.getInstance();
+		if (mc == null) return;
+		try {
+			SoundEvent ev = SoundEvent.createVariableRangeEvent(id);
+			SoundRuntime.setOverride(id, volMul, pitch);
+			try {
+				play(ev, 1.0F, 0.5F);
+			} finally {
+				SoundRuntime.clearOverride();
+			}
+		} catch (Throwable t) {
+			SoundConfig.LOGGER.debug("Pratinjau gagal", t);
+		}
+	}
+
 	private static boolean throttle(long[] last, int ms) {
 		long now = System.currentTimeMillis();
 		if (now - last[0] < ms) return false;

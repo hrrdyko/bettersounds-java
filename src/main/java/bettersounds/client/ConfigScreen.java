@@ -225,11 +225,7 @@ public class ConfigScreen extends Screen {
 	}
 
 	private void preview(String key) {
-		int c = key.indexOf(':');
-		Identifier id = c >= 0
-				? Identifier.fromNamespaceAndPath(key.substring(0, c), key.substring(c + 1))
-				: Identifier.fromNamespaceAndPath("minecraft", key);
-		playEvent(id);
+		playPreviewFor(key, cfg.get(key), 3);
 	}
 
 	// ---------------- init ----------------
@@ -294,9 +290,9 @@ public class ConfigScreen extends Screen {
 		if (enabled && click != null) hits.add(new Hit(x, y, x + w, y + h, clipT, clipB, click, null, null, quiet));
 	}
 
-	private static final float MAX_VOL = 5.0f; // volume per event sampai 500% (suara UI vanilla diputar 25%)
+	private static final float MAX_VOL = 2.0f; // volume per event sampai 200%
 
-	/** Slider volume: separuh kiri 0-100% (halus), separuh kanan 100-500%. */
+	/** Slider volume: separuh kiri 0-100%, separuh kanan 100-200%. */
 	private static double volToT(double v) {
 		return v <= 1.0 ? v / 2.0 : 0.5 + (v - 1.0) / (MAX_VOL - 1.0) / 2.0;
 	}
@@ -307,12 +303,13 @@ public class ConfigScreen extends Screen {
 
 	private void slider(GuiGraphicsExtractor g, int x, int rowY, int w, float value, float min, float max, double step,
 			String text, DoubleConsumer setter, Runnable reset) {
-		slider(g, x, rowY, w, value, v -> (v - min) / (max - min), t -> min + t * (max - min), step, text, setter, reset);
+		slider(g, x, rowY, w, value, v -> (v - min) / (max - min), t -> min + t * (max - min), step, text, setter, reset,
+				() -> {});
 	}
 
 	private void slider(GuiGraphicsExtractor g, int x, int rowY, int w, float value,
 			java.util.function.DoubleUnaryOperator toT, java.util.function.DoubleUnaryOperator fromT, double step,
-			String text, DoubleConsumer setter, Runnable reset) {
+			String text, DoubleConsumer setter, Runnable reset, Runnable onChange) {
 		Font f = this.minecraft.font;
 		g.text(f, text, x + (w - f.width(text)) / 2, rowY + 2, C_TEXT);
 		int ty = rowY + 16;
@@ -334,13 +331,53 @@ public class ConfigScreen extends Screen {
 			double tt = Math.max(0.0, Math.min(1.0, (mx - x) / (double) w));
 			double nv = fromT.applyAsDouble(tt);
 			double q = Math.round(nv / step) * step;
-			if (Double.isNaN(lastQ)) lastQ = Math.round(value / step) * step;
-			if (Math.abs(q - lastQ) > 1.0E-9) {
-				UiSounds.slider();
-				lastQ = q;
-			}
+			boolean first = Double.isNaN(lastQ);
+			if (first) lastQ = Math.round(value / step) * step;
+			boolean changed = Math.abs(q - lastQ) > 1.0E-9;
+			if (changed) lastQ = q;
 			setter.accept(nv);
+			if (first || changed) onChange.run(); // pratinjau suara mengikuti slider
 		}, reset));
+	}
+
+	/** Pitch simetris: kiri 0.5x (2x lebih rendah), tengah 1.0x, kanan 2.0x (2x lebih tinggi). */
+	private static double pitchToT(double v) {
+		return v <= 1.0 ? v - 0.5 : 0.5 + (v - 1.0) * 0.5;
+	}
+
+	private static double tToPitch(double t) {
+		return t <= 0.5 ? 0.5 + t : 1.0 + (t - 0.5) * 2.0;
+	}
+
+	private Runnable livePending;
+	private long lastLive = 0;
+
+	/** Memutar suara event dengan nilai slider saat ini (dibatasi supaya tidak menumpuk saat digeser). */
+	private void previewLive(String key, SoundConfig.Entry e, int pin) {
+		Runnable r = () -> playPreviewFor(key, e, pin);
+		long now = System.currentTimeMillis();
+		if (now - lastLive >= 110) {
+			lastLive = now;
+			livePending = null;
+			r.run();
+		} else {
+			livePending = r; // nilai terakhir diputar saat slider dilepas
+		}
+	}
+
+	/** @param pin 0 = pitch tengah rentang, 1 = pin bawah, 2 = pin atas, 3 = acak di dalam rentang */
+	private void playPreviewFor(String key, SoundConfig.Entry e, int pin) {
+		float pitch;
+		if (pin == 1) pitch = e.pitchMin;
+		else if (pin == 2) pitch = e.pitchMax;
+		else if (pin == 3 && e.pitchMax > e.pitchMin)
+			pitch = e.pitchMin + java.util.concurrent.ThreadLocalRandom.current().nextFloat() * (e.pitchMax - e.pitchMin);
+		else pitch = (e.pitchMin + e.pitchMax) / 2f;
+		int c = key.indexOf(':');
+		Identifier id = c >= 0
+				? Identifier.fromNamespaceAndPath(key.substring(0, c), key.substring(c + 1))
+				: Identifier.fromNamespaceAndPath("minecraft", key);
+		UiSounds.playPreview(id, e.volume, pitch);
 	}
 
 	/** Teks panjang berjalan ke samping beberapa detik, berhenti sejenak di awal dan di akhir. */
@@ -363,16 +400,15 @@ public class ConfigScreen extends Screen {
 	}
 
 	/** Slider pitch dengan dua pin: batas bawah dan batas atas (pitch acak di antaranya tiap suara diputar). */
-	private void rangeSlider(GuiGraphicsExtractor g, int x, int rowY, int w, SoundConfig.Entry e) {
+	private void rangeSlider(GuiGraphicsExtractor g, int x, int rowY, int w, SoundConfig.Entry e, String key) {
 		Font f = this.minecraft.font;
-		final float min = 0.5f, max = 2.0f;
 		String text = Math.abs(e.pitchMax - e.pitchMin) < 0.001f
 				? String.format(Locale.ROOT, "%.2fx", e.pitchMin)
 				: String.format(Locale.ROOT, "%.2f-%.2fx", e.pitchMin, e.pitchMax);
 		g.text(f, text, x + (w - f.width(text)) / 2, rowY + 2, C_TEXT);
 		int ty = rowY + 16;
-		int hx1 = x + Math.round((e.pitchMin - min) / (max - min) * w);
-		int hx2 = x + Math.round((e.pitchMax - min) / (max - min) * w);
+		int hx1 = x + Math.round((float) pitchToT(e.pitchMin) * w);
+		int hx2 = x + Math.round((float) pitchToT(e.pitchMax) * w);
 
 		inset(g, x - 1, ty - 2, w + 2, 6, C_INSET);
 		if (hx2 > hx1) {
@@ -389,7 +425,7 @@ public class ConfigScreen extends Screen {
 
 		hits.add(new Hit(x - 3, ty - 6, x + w + 3, ty + 8, listTop, listBottom, null, mx -> {
 			double tt = Math.max(0.0, Math.min(1.0, (mx - x) / (double) w));
-			float v = Math.round((min + tt * (max - min)) * 20f) / 20f;
+			float v = Math.round((float) tToPitch(tt) * 20f) / 20f;
 			// pilih pin: yang terdekat; kalau keduanya menumpuk, ikut arah geseran
 			if (dragPin == 0) {
 				float d1 = Math.abs(v - e.pitchMin), d2 = Math.abs(v - e.pitchMax);
@@ -403,7 +439,7 @@ public class ConfigScreen extends Screen {
 			if (dragPin == 1) e.pitchMin = Math.min(v, e.pitchMax);
 			else e.pitchMax = Math.max(v, e.pitchMin);
 			float after = dragPin == 1 ? e.pitchMin : e.pitchMax;
-			if (Math.abs(after - before) > 1.0E-6) UiSounds.slider();
+			if (Math.abs(after - before) > 1.0E-6) previewLive(key, e, dragPin);
 		}, () -> {
 			e.pitchMin = 1.0f;
 			e.pitchMax = 1.0f;
@@ -544,8 +580,9 @@ public class ConfigScreen extends Screen {
 			slider(g, volX, y, sliderW, e.volume, ConfigScreen::volToT, ConfigScreen::tToVol, 0.01,
 					Math.round(e.volume * 100f) + "%",
 					v -> e.volume = Math.round(Math.max(0f, Math.min(MAX_VOL, (float) v)) * 100f) / 100f,
-					() -> e.volume = 1.0f);
-			rangeSlider(g, pitX, y, sliderW, e);
+					() -> e.volume = 1.0f,
+					() -> previewLive(key, e, 0));
+			rangeSlider(g, pitX, y, sliderW, e, key);
 
 			boolean open = key.equals(popupKey);
 			boolean hov = mx >= dropX && mx < dropX + dropW && my >= Math.max(y + 4, listTop) && my < Math.min(y + 20, listBottom);
@@ -760,6 +797,12 @@ public class ConfigScreen extends Screen {
 		dragging = null;
 		lastQ = Double.NaN;
 		dragPin = 0;
+		if (livePending != null) {
+			Runnable r = livePending;
+			livePending = null;
+			lastLive = System.currentTimeMillis();
+			r.run();
+		}
 		return super.mouseReleased(event);
 	}
 

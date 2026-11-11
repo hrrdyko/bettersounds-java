@@ -65,6 +65,7 @@ public final class SoundConfig {
 		}
 
 		void normalize() {
+			volume = Math.max(0f, Math.min(2.0f, volume)); // batas volume per event: 200%
 			if (Math.abs(pitch - 1.0f) > 0.001f && Math.abs(pitchMin - 1.0f) < 0.001f && Math.abs(pitchMax - 1.0f) < 0.001f) {
 				pitchMin = pitch;
 				pitchMax = pitch;

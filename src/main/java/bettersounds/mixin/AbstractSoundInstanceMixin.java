@@ -12,9 +12,16 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 /** Menerapkan pengaturan volume/pitch per suara ke semua suara yang diputar. */
 @Mixin(AbstractSoundInstance.class)
 public abstract class AbstractSoundInstanceMixin {
+	@Unique
+	private float bettersounds$volMul = Float.NaN;
+
 	@Inject(method = "getVolume", at = @At("RETURN"), cancellable = true, require = 0)
 	private void bettersounds$volume(CallbackInfoReturnable<Float> cir) {
-		float m = SoundRuntime.volume(((SoundInstance) (Object) this).getIdentifier());
+		// dihitung sekali per suara, supaya pratinjau (override sementara) tidak berubah di tengah pemutaran
+		if (Float.isNaN(bettersounds$volMul)) {
+			bettersounds$volMul = SoundRuntime.volume(((SoundInstance) (Object) this).getIdentifier());
+		}
+		float m = bettersounds$volMul;
 		if (m != 1.0F) cir.setReturnValue(cir.getReturnValue() * m);
 	}
 
